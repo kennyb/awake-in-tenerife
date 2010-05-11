@@ -1,3 +1,8 @@
 preview release 1
 
 not really a whole lot you can do with it... wait for the docs and stuff
+
+LICENSE
+
+I chose to use the GNU AGPL v3.0 for the same reason MongoDB did as well. you can read about it here:
+http://www.mongodb.org/display/DOCS/Licensing
