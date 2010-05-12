@@ -160,6 +160,7 @@ FILES+=templates/*.d
 #lame hack for movideal! REMOVE ME
 FILES+=data/movideal/default_objs.d \
 	addon/http_request.d \
+	../common/kxml/xml.d \
 	obj/common.resolve.bc
 LINKOBJ+=obj/common.resolve.bc
 

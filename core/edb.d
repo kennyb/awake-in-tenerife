@@ -473,8 +473,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	// cleanup?
 	~this() {
-		mongo_cursor_destroy(cursor);
-		cursor = null;
+		//TODO!!! - do cleanup!
+		if(cursor) {
+		//	mongo_cursor_destroy(cursor);
+			cursor = null;
+		}
 	}
 	
 	int load(long id) {
