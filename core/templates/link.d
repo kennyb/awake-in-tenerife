@@ -613,7 +613,6 @@ version(unittests) {
 			assert("link10" in PNL.pnl);
 			PNL.pnl["link10"].render();
 			
-			noticeln(out_tmp[0 .. out_ptr]);
 			assert(out_tmp[0 .. out_ptr] == `11-11<input type="button" onclick="return z('k:invite,j:profile','lala=test%20text&uid=11')" href="?z=k:invite,j:profile&lala=test%20text&uid=11" class="custom" value="MOOO!">` ||
 				out_tmp[0 .. out_ptr] == `11-11<input type="button" onclick="return z('j:profile,k:invite','uid=11&lala=test%20text')" href="?z=j:profile,k:invite&uid=11&lala=test%20text" class="custom" value="MOOO!">`);
 		}

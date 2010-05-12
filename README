@@ -2,7 +2,31 @@ preview release 1
 
 not really a whole lot you can do with it... wait for the docs and stuff
 
+BRIEF SUMMARY
+
+This program is an integrated web server, templating system, and data abstraction layer. It's extremely fast. More later
+
+BUILDING
+
+cd core
+
+# build the necessary libs (this only needs to be done once or if you get errors about missing files)
+make libs [M32=true]
+
+# builds:
+# debug (default) - will give a lot errors and reload all panels every page load
+# release - compiles with optimization on
+#
+# options:
+# M32=true - required if you're on a 32 bit system
+# BYTECODE=true - will print the bytecode to the console as it's executed
+# WARN=true - turn on compiler warnings
+
+make [release|debug] [M32=true] [BYTECODE=true] [WARN=true] [UNITTESTS=true]
+
 LICENSE
 
-I chose to use the GNU AGPL v3.0 for the same reason MongoDB did as well. you can read about it here:
+I chose the GNU AGPL v3.0 for the same reasons MongoDB did. you can read about it here:
 http://www.mongodb.org/display/DOCS/Licensing
+
+basically, it's GPL with a stricter copyleft.. I want your code!

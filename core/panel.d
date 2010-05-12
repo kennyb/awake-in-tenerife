@@ -2405,7 +2405,6 @@ class PNL {
 					version(renderingbytecode) noticeln(cur, ": ptr(func)");
 					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
 					long val = func(p.str_value);
-					noticeln("func: (", p.str_value, ") ", val);
 					prt(Integer.toString(val));
 				break;
 				case pnl_action_var_str:

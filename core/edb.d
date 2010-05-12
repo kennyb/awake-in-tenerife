@@ -665,8 +665,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 		
 		b = make_bson_struct();
-		noticeln("saving... ", _id);
-		bson_print(&b);
+		//noticeln("saving... ", _id);
+		//bson_print(&b);
 		
 		if(!is_new) {
 			bson cond;
@@ -2131,7 +2131,6 @@ version(unittests) {
 			
 			POST["uid"] = "1111";
 			PNL.pnl["edb6"].render();
-			noticeln(out_tmp[0 .. out_ptr]);
 			assert(out_tmp[0 .. out_ptr] == `(1111)`);
 		}
 		

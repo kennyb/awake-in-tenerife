@@ -48,7 +48,7 @@ ifeq ($(DATATEST),true)
 endif
 
 ifeq ($(DMD),ldc)
-	DFLAGS+=-singleobj -output-bc -relocation-model=pic -I ../common/tango-svn/tango/core/rt/compiler/ldc/ -enable-eh -enable-correct-eh-support -realign-stack -code-model=large
+	DFLAGS+=-singleobj -output-bc -relocation-model=pic -I../common/tango-svn/tango/core/rt/compiler/ldc/ -I../common/tango-svn/ -enable-eh -enable-correct-eh-support -realign-stack -code-model=large
 	#-disable-boundscheck
 	LDFLAGS+=-native -stats
 	#CFLAGS=
