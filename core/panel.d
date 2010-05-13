@@ -2042,7 +2042,7 @@ class PNL {
 												p.ulong_value = toUlong(value);
 											} else if(v_type == pnl_action_var_str) {
 												p.action = pnl_action_set_str;
-												p.ptr = cast(char*)var_ptr[v_inst][vname];
+												p.ptr = cast(char*)var_str[v_inst][vname];
 												p.str_value = value;
 											}
 										}
