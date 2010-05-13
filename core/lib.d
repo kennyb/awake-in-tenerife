@@ -630,6 +630,7 @@ string replace_cs(string str, char f, string r) {
 
 string replace_ss(string str, string f, string r) {
 	string output;
+	//OPTIMIZE!! - if the string sizes are the same, this can be optimized
 	output.length = (str.length * r.length) >> 2;
 	output.length = 0;
 	auto len = str.length;
@@ -638,6 +639,7 @@ string replace_ss(string str, string f, string r) {
 	
 restart:
 	while(i < len) {
+		//OPTIMIZE!! - if you save the last index, an operation can be done like in replace_sc
 		for(size_t j = i, k = 0; j < len && k < flen; j++, k++) {
 			if(str[j] != f[k]) {
 				output ~= str[i++];
@@ -667,6 +669,32 @@ restart:
 		if(j != -1) {
 			output ~= str[i .. j] ~  r;
 			i = j + flen;
+		} else {
+			break;
+		}
+	}
+	
+	if(i < len) {
+		output ~= str[i .. $];
+	}
+	
+	return output;
+}
+
+string remove_c(string str, char f) {
+	string output;
+	output.length = str.length;
+	output.length = 0;
+	auto len = str.length;
+	size_t i = 0;
+	size_t j;
+	
+restart:
+	while(true) {
+		j = find_c(str, f, i);
+		if(j != -1) {
+			output ~= str[i .. j];
+			i = ++j;
 		} else {
 			break;
 		}

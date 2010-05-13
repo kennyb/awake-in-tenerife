@@ -143,7 +143,7 @@ class XmlNode
 	protected string _name;
 	protected string[string] _attributes;
 	protected XmlNode[]      _children;
-
+	protected XmlNode _parent;
 
 
 	static this(){}
@@ -164,6 +164,16 @@ class XmlNode
 	/// Set the name of this XmlNode.
 	void setName(string newName) {
 		_name = newName;
+	}
+
+	/// Get the name of this XmlNode.
+	XmlNode getParent() {
+		return _parent;
+	}
+
+	/// Set the name of this XmlNode.
+	void setParent(XmlNode parent) {
+		_parent = parent;
 	}
 
 	/// Does this XmlNode have the specified attribute?
@@ -243,6 +253,29 @@ class XmlNode
 			_children = _children[0..i]~_children[i+1..$];
 		}
 		return len - _children.length;
+	}
+
+	/// Remove the child with the same reference as what was given.
+	/// Returns: The number of children removed.
+	int removeChild(int i) {
+		int len = _children.length;
+		if(i == 0) {
+			if(len == 1) {
+				_children.length = 0;
+			} else {
+				_children = _children[1 .. $];
+			}
+		} else if(i == len-1) {
+			_children = _children[0 .. $-1];
+		} else if(i < len) {
+			_children = _children[0..i]~_children[i+1..$];
+		} else {
+			len++;
+		}
+		
+		len--;
+		
+		return len;
 	}
 
 	/// Add a child Node of cdata (text).
@@ -517,6 +550,7 @@ class XmlNode
 		debug(xml)logline("Got a "~name~" open tag\n");
 		auto newnode = (_docroot?_docroot.allocXmlNode:new XmlNode);
 		newnode.setName(name);
+		newnode.setParent(parent);
 		xsrc = stripl(xsrc);
 		while(xsrc.length && xsrc[0] != '/' && xsrc[0] != '>') {
 			parseAttribute(newnode,xsrc);

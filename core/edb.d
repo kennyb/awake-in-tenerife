@@ -447,6 +447,9 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		parse_options(str_query, saved_query, true);
 		if(load(saved_query, page_offset, page_size)) {
 			loop();
+			if(cursor != null) {
+				skip_loop = true;
+			}
 		} else {
 			
 		}
@@ -1772,15 +1775,16 @@ version(unittests) {
 		}
 		
 		void looping() {
-			// find only one
+			// find only one (page size)
 			UnittestPhotoTag ptags = new UnittestPhotoTag("", 0, 1);
+			assert(ptags.loop());
 			assert(ptags._id == 1);
 			assert(ptags.uid == 11);
 			assert(!ptags.loop());
 			
-			/*
 			// find two by modifying the variable via the query
 			ptags = new UnittestPhotoTag("$page_size: 2");
+			assert(ptags.loop());
 			assert(ptags._id == 1);
 			assert(ptags.uid == 11);
 			assert(ptags.loop());
@@ -1789,6 +1793,7 @@ version(unittests) {
 			assert(!ptags.loop());
 			
 			ptags = new UnittestPhotoTag("$orderby: {_id: -1}, $page_size: 2");
+			assert(ptags.loop());
 			assert(ptags._id == 3);
 			assert(ptags.uid == 11);
 			assert(ptags.loop());
@@ -1797,6 +1802,7 @@ version(unittests) {
 			assert(!ptags.loop());
 			
 			ptags = new UnittestPhotoTag("$orderby: {_id: -1}, uid: 11, $page_size: 2");
+			assert(ptags.loop());
 			assert(ptags._id == 3);
 			assert(ptags.uid == 11);
 			assert(ptags.loop());
