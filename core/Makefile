@@ -20,7 +20,7 @@ DFLAGS=-I../common -nodefaultlib
 
 ifeq ($(DMD),ldc)
 	LD=llvm-ld
-	CC=llvmc --emit-llvm
+	CC=llvm-gcc --emit-llvm
 	O=-of=obj/
 	LDO=-o=
 else

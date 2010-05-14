@@ -42,7 +42,7 @@ static void looping_write(mongo_connection * conn, const void* buf, int len){
     const char* cbuf = buf;
     while (len){
         int sent = send(conn->sock, cbuf, len, 0);
-        if (sent == -1) MONGO_THROW(MONGO_EXCEPT_NETWORK);
+        //if (sent == -1) MONGO_THROW(MONGO_EXCEPT_NETWORK);
         cbuf += sent;
         len -= sent;
     }
@@ -52,7 +52,7 @@ static void looping_read(mongo_connection * conn, void* buf, int len){
     char* cbuf = buf;
     while (len){
         int sent = recv(conn->sock, cbuf, len, 0);
-        if (sent == 0 || sent == -1) MONGO_THROW(MONGO_EXCEPT_NETWORK);
+        //if (sent == 0 || sent == -1) MONGO_THROW(MONGO_EXCEPT_NETWORK);
         cbuf += sent;
         len -= sent;
     }
@@ -66,15 +66,15 @@ void mongo_message_send(mongo_connection * conn, mongo_message* mm){
     bson_little_endian32(&head.responseTo, &mm->head.responseTo);
     bson_little_endian32(&head.op, &mm->head.op);
     
-    MONGO_TRY{
+    //MONGO_TRY{
 	    //printf("sending message %p\n", mm);
         looping_write(conn, &head, sizeof(head));
         looping_write(conn, &mm->data, mm->head.len - sizeof(head));
 	    //printf("sending message %p\n", mm);
-    }MONGO_CATCH{
-        free(mm);
-        MONGO_RETHROW();
-    }
+    //}MONGO_CATCH{
+    //    free(mm);
+    //    MONGO_RETHROW();
+    //}
     //printf("*******");
     free(mm);
 }
@@ -310,12 +310,12 @@ mongo_reply * mongo_read_response( mongo_connection * conn ){
     bson_little_endian32(&out->fields.start, &fields.start);
     bson_little_endian32(&out->fields.num, &fields.num);
 
-    MONGO_TRY{
+    //MONGO_TRY{
         looping_read(conn, &out->objs, len-sizeof(head)-sizeof(fields));
-    }MONGO_CATCH{
-        free(out);
-        MONGO_RETHROW();
-    }
+    //}MONGO_CATCH{
+    //    free(out);
+    //    MONGO_RETHROW();
+    //}
 
     return out;
 }
@@ -348,12 +348,12 @@ mongo_cursor* mongo_find(mongo_connection* conn, const char* ns, bson* query, bs
 
     cursor = (mongo_cursor*)bson_malloc(sizeof(mongo_cursor));
 
-    MONGO_TRY{
+    //MONGO_TRY{
         cursor->mm = mongo_read_response(conn);
-    }MONGO_CATCH{
-        free(cursor);
-        MONGO_RETHROW();
-    }
+    //}MONGO_CATCH{
+    //    free(cursor);
+    //    MONGO_RETHROW();
+    //}
 
     sl = strlen(ns)+1;
     cursor->ns = bson_malloc(sl);
@@ -393,16 +393,16 @@ int64_t mongo_count(mongo_connection* conn, const char* db, const char* ns, bson
         bson_append_bson(&bb, "query", query);
     bson_from_buffer(&cmd, &bb);
 
-    MONGO_TRY{
+    //MONGO_TRY{
         if(mongo_run_command(conn, db, &cmd, &out)){
             bson_iterator it;
             if(bson_find(&it, &out, "n"))
                 count = bson_iterator_long(&it);
         }
-    }MONGO_CATCH{
-        bson_destroy(&cmd);
-        MONGO_RETHROW();
-    }
+    //}MONGO_CATCH{
+    //    bson_destroy(&cmd);
+    //    MONGO_RETHROW();
+    //}
     
     bson_destroy(&cmd);
     bson_destroy(&out);
@@ -454,13 +454,13 @@ bson_bool_t mongo_cursor_get_more(mongo_cursor* cursor){
 
         free(cursor->mm);
 
-        MONGO_TRY{
+        //MONGO_TRY{
             cursor->mm = mongo_read_response(cursor->conn);
-        }MONGO_CATCH{
-            cursor->mm = NULL;
-            mongo_cursor_destroy(cursor);
-            MONGO_RETHROW();
-        }
+        //}MONGO_CATCH{
+        //    cursor->mm = NULL;
+        //    mongo_cursor_destroy(cursor);
+        //    MONGO_RETHROW();
+        //}
 
         return cursor->mm && cursor->mm->fields.num;
     } else{
@@ -508,14 +508,14 @@ void mongo_cursor_destroy(mongo_cursor* cursor){
         data = mongo_data_append32(data, &one);
         data = mongo_data_append64(data, &cursor->mm->fields.cursorID);
         
-        MONGO_TRY{
+        //MONGO_TRY{
             mongo_message_send(conn, mm);
-        }MONGO_CATCH{
-            free(cursor->mm);
-            free((void*)cursor->ns);
-            free(cursor);
-            MONGO_RETHROW();
-        }
+        //}MONGO_CATCH{
+        //    free(cursor->mm);
+        //    free((void*)cursor->ns);
+        //    free(cursor);
+        //    MONGO_RETHROW();
+        //}
     }
         
     free(cursor->mm);
@@ -736,14 +736,14 @@ void mongo_cmd_add_user(mongo_connection* conn, const char* db, const char* user
     bson_from_buffer(&pass_obj, &bb);
 
 
-    MONGO_TRY{
+    //MONGO_TRY{
         mongo_update(conn, ns, &user_obj, &pass_obj, MONGO_UPDATE_UPSERT);
-    }MONGO_CATCH{
-        free(ns);
-        bson_destroy(&user_obj);
-        bson_destroy(&pass_obj);
-        MONGO_RETHROW();
-    }
+    //}MONGO_CATCH{
+    //    free(ns);
+    //    bson_destroy(&user_obj);
+    //    bson_destroy(&pass_obj);
+    //    MONGO_RETHROW();
+    //}
 
     free(ns);
     bson_destroy(&user_obj);
@@ -786,16 +786,16 @@ bson_bool_t mongo_cmd_authenticate(mongo_connection* conn, const char* db, const
 
     bson_destroy(&from_db);
 
-    MONGO_TRY{
+    //MONGO_TRY{
         if(mongo_run_command(conn, db, &auth_cmd, &from_db)){
             bson_iterator it;
             if(bson_find(&it, &from_db, "ok"))
                 success = bson_iterator_bool(&it);
         }
-    }MONGO_CATCH{
-        bson_destroy(&auth_cmd);
-        MONGO_RETHROW();
-    }
+    //}MONGO_CATCH{
+    //    bson_destroy(&auth_cmd);
+    //    MONGO_RETHROW();
+    //}
 
     bson_destroy(&from_db);
     bson_destroy(&auth_cmd);

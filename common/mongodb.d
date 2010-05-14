@@ -364,3 +364,7 @@ void * bson_malloc(int size); /* checks return value */
 void bson_fatal( int ok );
 void bson_fatal_msg( int ok, /*const*/ char* msg );
 
+
+
+
+

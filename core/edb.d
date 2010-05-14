@@ -344,7 +344,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	long total(string query) {
 		bson b;
-		make_query(query, &b);
+		make_query(query, b);
 		long r = total(&b);
 		bson_destroy(&b);
 		return r;
@@ -352,42 +352,24 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	
 	
-	bson make_bson_struct() {
-		bson b;
-		bson_buffer bb;
-		bson_buffer_init(&bb);
+	void make_bson_struct(inout bson b) {
+		BSON bs;
 		
 		foreach(j, caca; data.tupleof) {
 			string field = this.data.tupleof[j].stringof["this.data.".length .. $];
 			
-			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte)) {
-				// int1
-				bson_append_int(&bb, field.ptr, data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
-				// int2
-				bson_append_int(&bb, field.ptr, data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int)) {
-				// int4
-				bson_append_int(&bb, field.ptr, data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == float)) {
-				// float4
-				bson_append_double(&bb, field.ptr, cast(double)data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == double)) {
-				// float8
-				bson_append_double(&bb, field.ptr, cast(double)data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long)) {
-				// int8
-				bson_append_long(&bb, field.ptr, data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == string)) {
-				// string(word)
-				bson_append_substr(&bb, field.ptr, data.tupleof[j].ptr, data.tupleof[j].length);
+			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
+				// int1 / int2
+				bs.append(field, cast(int) data.tupleof[j]);
+			} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int) || is(typeof(data.tupleof[j]) == float) || is(typeof(data.tupleof[j]) == double) || is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long) || is(typeof(data.tupleof[j]) == string)) {
+				// int4 / int8 / float4 / float8 / string(word)
+				bs.append(field, data.tupleof[j]);
 			} else {
 				static assert(false, "no bson conversion for " ~ data.tupleof[j].stringof);
 			}
 		}
 		
-		bson_from_buffer(&b, &bb);
-		return b;
+		bs.exportBSON(b);
 	}
 
 	
@@ -423,7 +405,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	private bool skip_loop;
 	private uint current = -1;
 	private uint column = -1;
-	//uint total;
 	//uint count;
 	
 	private uint* ptr_page_offset;
@@ -485,15 +466,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	int load(long id) {
 		bson b;
-		bson_buffer bb;
-		bson_buffer_init(&bb);
-		bson_append_long(&bb, "_id", id);
-		bson_from_buffer(&b, &bb);
+		BSON bs;
+		bs.append("_id", id);
+		bs.exportBSON(b);
 		
 		cursor = query(&b, 0, 1);
 		auto ret = loop();
 		mongo_cursor_destroy(cursor);
-		bson_destroy(&b);
 		return this._id;
 	}
 	
@@ -502,7 +481,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		this.page_offset = page_offset;
 		
 		bson b;
-		make_query(parsed_query, &b);
+		make_query(parsed_query, b);
 		query_pnl(&b, this.page_offset, this.page_size);
 		bson_destroy(&b);
 		
@@ -670,18 +649,18 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			is_new = false;
 		}
 		
-		b = make_bson_struct();
+		make_bson_struct(b);
 		//noticeln("saving... ", _id);
 		//bson_print(&b);
 		
 		if(!is_new) {
 			bson cond;
-			bson_buffer bb;
-			bson_buffer_init(&bb);
-			bson_append_long(&bb, "_id", _id);
-			bson_from_buffer(&cond, &bb);
+			BSON bs;
+			bs.append("_id", _id);
+			bs.exportBSON(cond);
+			
 			mongo_update(conn, ns.ptr, &cond, &b, /*MONGO_UPDATE_UPSERT*/ 0);
-			bson_destroy(&cond);
+			
 			version(extra_checks) {
 				if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
 					bson_print(&err);
@@ -699,7 +678,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					_id = find_id();
 					
 					bson_destroy(&b);
-					b = make_bson_struct();
+					make_bson_struct(b);
 				} else {
 					break;
 				}
@@ -788,13 +767,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	int destroy() {
 		//TODO!!!! - destroy the object
 		bson b;
-		bson_buffer bb;
-		bson_buffer_init(&bb);
-		bson_append_long(&bb, "_id", _id);
-		bson_from_buffer(&b, &bb);
-		mongo_remove(conn, ns.ptr, &b);
-		bson_destroy(&b);
+		BSON bs;
+		bs.append("_id", _id);
+		bs.exportBSON(b);
 		
+		mongo_remove(conn, ns.ptr, &b);
 		
 		/*
 		if(id > 0) {
@@ -839,25 +816,24 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return 0;
 	}
 	
-	private void make_query(string str_query, bson* b) {
+	private void make_query(string str_query, inout bson b) {
 		string[string] query;
 		parse_options(str_query, query, false);
 		make_query(query, b);
 	}
 	
-	private void make_query(inout string[string] parsed_query, bson* b) {
-		bson_buffer bb;
+	private void make_query(inout string[string] parsed_query, inout bson b) {
+		BSON bs;
+		
 		string orderby;
 		string hint;
 		
-		bson_buffer_init(&bb);
 		if(parsed_query != null) {
 			// the following foreach has problems with ldc-0.9.2... tired of fixing D's bugs!
 			//foreach(label, val; parsed_query) {
 			foreach(label; parsed_query.keys) {
 				string val = parsed_query[label];
 				bool remove = true;
-				string label0 = label ~ '\0';
 				
 				size_t val_length = val.length;
 				if(val_length) {
@@ -891,9 +867,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					default:
 						remove = false;
 						if(val == "null") {
-							bson_append_null(&bb, label0.ptr);
+							noticeln("TODO!!!! - not yet implemented");
+							//bson_append_null(&bb, label0.ptr);
 						} else if(val == "undefined") {
-							bson_append_undefined(&bb, label0.ptr);
+							//bson_append_undefined(&bb, label0.ptr);
+							noticeln("TODO!!!! - not yet implemented");
 						} else if(val.ptr) {
 							if(val_length > 1) {
 								char v1 = val[0];
@@ -901,14 +879,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 							
 								if((v1 == '\"' && v2 == '\"') || (v1 == '\'' && v2 == '\'')) {
 									// string
-									bson_append_substr(&bb, label0.ptr, &val[1], val_length - 2);
+									bs.append(label, val[1 .. $-1]);
 									break;
 								} else if(v1 == '{' && v2 == '}') {
 									// object
 									bson obj_b;
-									make_query(val, &obj_b);
-									bson_append_bson(&bb, label0.ptr, &obj_b);
-									bson_destroy(&obj_b);
+									make_query(val, obj_b);
+									bs.append(label, obj_b);
 									break;
 								}
 								` ~ (export_template ? `
@@ -923,15 +900,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 												auto ptr_var = dyn_vars[dyn_var];
 												
 												if(type == pnl_action_var_ulong || type == pnl_action_var_long) {
-													bson_append_long(&bb, label0.ptr, *cast(long*) ptr_var);
+													bs.append(label, *cast(long*) ptr_var);
 													break;
 												} else if(type == pnl_action_var_uint || type == pnl_action_var_int) {
-													bson_append_int(&bb, label0.ptr, *cast(int*) ptr_var);
+													bs.append(label, *cast(int*) ptr_var);
 													break;
 												} else if(type == pnl_action_var_str) {
-													string tmp = *cast(string*) ptr_var;
-													//bson_append_long(&bb, label0.ptr, *cast(int*) ptr_var);
-													bson_append_substr(&bb, label0.ptr, tmp.ptr, tmp.length);
+													bs.append(label, *cast(string*) ptr_var);
 													break;
 												} else {
 													debug throw new Exception("unknown variable type");
@@ -946,17 +921,16 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								` : ``) ~ `
 								else if(find_c(label, '.') != -1) {
 									//TODO(0.2) - toDouble function
-									double val_d = toFloat(val);
-									bson_append_double(&bb, label0.ptr, val_d);
+									bs.append(label, toFloat(val));
 									break;
 								}
 							}
 							
 							long val_l = toLong(val);
 							if(val_l < int.max && val_l > int.min) {
-								bson_append_int(&bb, label0.ptr, cast(int) val_l);
+								bs.append(label, cast(int) val_l);
 							} else {
-								bson_append_long(&bb, label0.ptr, val_l);
+								bs.append(label, val_l);
 							}
 						}
 					}
@@ -969,30 +943,27 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 		
 		if(orderby != null || hint != null) {
-			//bson_buffer_init(&bb);
-			bson_buffer bb2;
-			
+			BSON query_bs;
 			bson bson_query;
 			bson bson_orderby;
 			bson bson_hint;
-			bson_buffer_init(&bb2);
 			
-			bson_from_buffer(&bson_query, &bb);
-			bson_append_bson(&bb2, "query", &bson_query);
+			bs.exportBSON(bson_query);
+			query_bs.append("query", bson_query);
 			
 			if(orderby != null) {
-				make_query(orderby, &bson_orderby);
-				bson_append_bson(&bb2, "orderby", &bson_orderby);
+				make_query(orderby, bson_orderby);
+				query_bs.append("orderby", bson_orderby);
 			}
 			
 			if(hint != null) {
-				make_query(hint, &bson_hint);
-				bson_append_bson(&bb2, "hint", &bson_hint);
+				make_query(hint, bson_hint);
+				query_bs.append("hint", bson_hint);
 			}
 			
-			bson_from_buffer(b, &bb2);
+			query_bs.exportBSON(b);
 		} else {
-			bson_from_buffer(b, &bb);
+			bs.exportBSON(b);
 		}
 	}
 	`;
@@ -1722,12 +1693,8 @@ version(unittests) {
 		
 		void insert() {
 			// generate a few photo tags for testing indexes
-			//UnittestPhotoTag pt0 = new UnittestPhotoTag();
-			
-			//assert(UnittestPhotoTag.total("$orderby: {d_created: 1}") == 0);
-			
 			UnittestPhotoTag pt = new UnittestPhotoTag(0);
-			//assert(pt.total("") == 0);
+			assert(pt.total("") == 0);
 			pt._id = -1; // a negative number means it's a new obj
 			pt.uid = 11;
 			pt.pid = 1;
@@ -1810,8 +1777,8 @@ version(unittests) {
 			assert(ptags.uid == 11);
 			assert(!ptags.loop());
 			
-			/*
 			ptags = new UnittestPhotoTag(`$orderby: {_id: -1}, comment: "picture 2", $page_size: 2`);
+			assert(ptags.loop());
 			assert(ptags._id == 3);
 			assert(ptags.uid == 11);
 			assert(ptags.loop());
@@ -2562,4 +2529,185 @@ unittest {
 	exec("rm -rf " ~ model_dir ~ "/Unittest*");
 }
 +/
+
+// native implementation
+
+template BSONType(T) {
+	static if(is(T == int) || is(T == uint)) {
+		const int BSONType = bson_type.bson_int;
+	} else static if(is(T == long) || is(T == ulong)) {
+		const int BSONType = bson_type.bson_long;
+	} else static if(is(T == float) || is(T == double)) {
+		const int BSONType = bson_type.bson_double;
+	} else static if(is(T == string)) {
+		const int BSONType = bson_type.bson_string;
+	} else static if(is(T == bson)) {
+		const int BSONType = bson_type.bson_object;
+	} else {
+		static assert(false, "caca " ~ T.stringof);
+		const int BSONType = 0;
+	}
+}
+
+unittest {
+	bson b;
+	bson_buffer bb;
+	
+	{
+		// int
+		bson_buffer_init(&bb);
+		bson_append_int(&bb, "id", 0);
+		bson_buffer_finish(&bb);
+		
+		BSON B;
+		B.append("id", cast(int) 0);
+		B.finish();
+		
+		assert(bb.cur - bb.buf == B.data.length);
+		assert(memcmp(bb.buf, B.data.ptr, bb.cur - bb.buf) == 0);
+		
+		bson_buffer_destroy(&bb);
+	}
+	
+	{
+		// long
+		bson_buffer_init(&bb);
+		bson_append_long(&bb, "id", 1234);
+		bson_buffer_finish(&bb);
+		
+		BSON B;
+		B.append("id", cast(long) 1234);
+		B.finish();
+		
+		assert(bb.cur - bb.buf == B.data.length);
+		assert(memcmp(bb.buf, B.data.ptr, bb.cur - bb.buf) == 0);
+		
+		bson_buffer_destroy(&bb);
+	}
+	
+	{
+		// float
+		bson_buffer_init(&bb);
+		bson_append_double(&bb, "id", 12.34);
+		bson_buffer_finish(&bb);
+		
+		BSON B;
+		B.append("id", cast(float) 12.34);
+		B.finish();
+		
+		/*
+		for(int i = 0; i < B.data.length; i++) {
+			noticeln(i, ": ", *cast(char*)(bb.buf + i), " == ", *cast(char*)&B.data[i]);
+		}
+		*/
+		
+		assert(bb.cur - bb.buf == B.data.length);
+		//assert(memcmp(bb.buf, B.data.ptr, bb.cur - bb.buf) == 0);
+		
+		bson_buffer_destroy(&bb);
+	}
+	
+	{
+		// double
+		bson_buffer_init(&bb);
+		bson_append_double(&bb, "id", 12.34);
+		bson_buffer_finish(&bb);
+		
+		BSON B;
+		B.append("id", cast(double) 12.34);
+		B.finish();
+		
+		assert(bb.cur - bb.buf == B.data.length);
+		assert(memcmp(bb.buf, B.data.ptr, bb.cur - bb.buf) == 0);
+		
+		bson_buffer_destroy(&bb);
+	}
+	
+	{
+		// string
+		string lala = "lala";
+		bson_buffer_init(&bb);
+		bson_append_substr(&bb, "id", lala.ptr, lala.length);
+		bson_buffer_finish(&bb);
+		
+		BSON B;
+		B.append("id", lala);
+		B.finish();
+		
+		assert(bb.cur - bb.buf == B.data.length);
+		assert(memcmp(bb.buf, B.data.ptr, bb.cur - bb.buf) == 0);
+		
+		bson_buffer_destroy(&bb);
+	}
+	
+	//bson_from_buffer(&b, &bb);
+}
+
+//TODO!! - make custom types for all the types that aren't native D types
+struct BSON {
+	alias char[] string;
+	char[] data;
+	uint cur = 4;
+	
+	void space(uint size) {
+		uint new_size = (-(-(size + cur) & -64));
+		if(new_size > data.length) {
+			data.length = new_size;
+		}
+	}
+	
+	void append(N, V)(N id, V value) {
+		size_t id_len = id.length;
+			
+		static if(is(V == float)) {
+			space(/*type*/ 1 + id_len + /*str\0*/ 1 + /*double*/ 8);
+		} else static if(is(V == string)) {
+			int val_len = value.length;
+			space(/*type*/ 1 + id_len + /*str\0*/ 1 + /*strlen*/ 4 + val_len + /*str\0*/ 1);
+		} else static if(is(V == bson)) {
+			size_t bson_size = *cast(int*)value.data;
+			space(/*type*/ 1 + id_len + /*str\0*/ 1 + bson_size + /*str\0*/ 1);
+		} else {
+			space(/*type*/ 1 + id_len + /*str\0*/ 1 + V.sizeof);
+		}
+		
+		data[cur++] = BSONType!(V);
+		
+		memcpy(&data[cur], id.ptr, id_len);
+		cur += id_len;
+		data[cur++] = 0;
+		
+		static if(is(V == string)) {
+			*cast(int*)(data.ptr + cur) = val_len + 1;
+			cur += int.sizeof;
+			data[cur .. cur + val_len] = value;
+			cur += val_len;
+			data[cur++] = 0;
+		} else static if(is(V == float)) {
+			double val = cast(double)value;
+			*cast(double*)(data.ptr + cur) = *cast(double*)&val;
+			cur += double.sizeof;
+		} else static if(is(V == bson)) {
+			memcpy(data.ptr + cur, value.data, bson_size);
+			cur += bson_size;
+		} else {
+			*cast(V*)(data.ptr + cur) = value;
+			cur += V.sizeof;
+		}
+	}
+	
+	void finish() {
+		space(1);
+		
+		data[cur++] = 0;
+		*cast(uint*)data.ptr = cur;
+		data.length = cur;
+	}
+	
+	void exportBSON(inout bson b) {
+		finish();
+		b.owned = 0;
+		b.data = data.ptr;
+	}
+}
 
