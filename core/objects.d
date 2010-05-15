@@ -67,7 +67,9 @@ extern void delegate() new_object(string name, PNL* pnl, inout string[string] pa
 		TemplateObject function(PNL* pnl, inout string[string] params) obj_init = *ptr_obj;
 		TemplateObject obj = obj_init(pnl, params);
 		normal_objects[pnl.name][name][instance] = obj;
-		return &obj.load;
+		if(obj) {
+			return &obj.load;
+		}
 	}
 	
 	

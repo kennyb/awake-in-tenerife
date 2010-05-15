@@ -1276,7 +1276,6 @@ version(unittests) {
 	class Test_mongodb : Unittest {
 		static this() { Unittest.add(typeof(this).stringof, new typeof(this));}
 		
-		
 		string unit_ns = "test.testing";
 		string unit_db = "test";
 		string unit_collection = "testing";
@@ -1290,84 +1289,107 @@ version(unittests) {
 		}
 		
 		void test() {
+			int count;
+			
 			bson b;
 			bson obj;
 			bson err;
-			bson_buffer bb;
 			mongo_cursor* cursor;
 			bson_iterator it;
 				
-			// insert #1
-			bson_buffer_init(&bb);
-			bson_append_long(&bb, "id", 1234);
-			bson_from_buffer(&b, &bb);
-			mongo_insert(conn, unit_ns.ptr, &b);
-			bson_destroy(&b);
-			version(extra_checks) assert(!mongo_cmd_get_last_error(conn, unit_db.ptr, &err));
-			version(extra_checks) bson_destroy(&err);
+			{
+				// insert #1
+				BSON bs;
+				bs.append("id", cast(long)1234);
+				bs.exportBSON(b);
+				//bson_buffer_init(&bb);
+				//bson_append_long(&bb, "id", 1234);
+				//bson_from_buffer(&b, &bb);
+				mongo_insert(conn, unit_ns.ptr, &b);
+				//bson_destroy(&b);
+				version(extra_checks) assert(!mongo_cmd_get_last_error(conn, unit_db.ptr, &err));
+				version(extra_checks) bson_destroy(&err);
+			}
 			
-			// insert #2
-			bson_buffer_init(&bb);
-			bson_append_long(&bb, "id", 1026);
-			bson_from_buffer(&b, &bb);
-			mongo_insert(conn, unit_ns.ptr, &b);
-			bson_destroy(&b);
-			version(extra_checks) assert(!mongo_cmd_get_last_error(conn, unit_db.ptr, &err));
-			version(extra_checks) bson_destroy(&err);
+			{
+				// insert #2
+				BSON bs;
+				bs.append("id", cast(long)1026);
+				bs.exportBSON(b);
+				//bson_buffer_init(&bb);
+				//bson_append_long(&bb, "id", 1026);
+				//bson_from_buffer(&b, &bb);
+				mongo_insert(conn, unit_ns.ptr, &b);
+				//bson_destroy(&b);
+				version(extra_checks) assert(!mongo_cmd_get_last_error(conn, unit_db.ptr, &err));
+				version(extra_checks) bson_destroy(&err);
+			}
 			
-			// find only one
-			bson_buffer_init(&bb);
-			bson_append_long(&bb, "id", 1234);
-			bson_from_buffer(&b, &bb);
-			cursor = mongo_find(conn, unit_ns.ptr, &b, null, 10, 0, 0);
-			bson_destroy(&b);
-			
-			int count = 0;
-			while(mongo_cursor_next(cursor)) {
-				bson_copy(&b, &cursor.current);
-				bson_destroy(&b);
-				count++;
+			{
+				// find only one
+				BSON bs;
+				bs.append("id", cast(long)1234);
+				bs.exportBSON(b);
+				//bson_buffer_init(&bb);
+				//bson_append_long(&bb, "id", 1234);
+				//bson_from_buffer(&b, &bb);
+				cursor = mongo_find(conn, unit_ns.ptr, &b, null, 10, 0, 0);
+				//bson_destroy(&b);
 				
-				assert(count != 1 || bson_find(&it, &cursor.current, "id") == bson_type.bson_long);
-				assert(count != 1 || bson_iterator_long(&it) == 1234);
+				count = 0;
+				while(mongo_cursor_next(cursor)) {
+					bson_copy(&b, &cursor.current);
+					bson_destroy(&b);
+					count++;
+					
+					assert(count != 1 || bson_find(&it, &cursor.current, "id") == bson_type.bson_long);
+					assert(count != 1 || bson_iterator_long(&it) == 1234);
+				}
+				
+				mongo_cursor_destroy(cursor);
+				assert(count == 1);
 			}
 			
-			mongo_cursor_destroy(cursor);
-			assert(count == 1);
-			
-			// find all
-			bson_empty(&b);
-			cursor = mongo_find(conn, unit_ns.ptr, &b, null, 10, 0, 0);
-			bson_destroy(&b);
-			
-			count = 0;
-			while(mongo_cursor_next(cursor)) {
-				bson_copy(&b, &cursor.current);
-				bson_destroy(&b);
-				count++;
+			{
+				// find all
+				///bson_empty(&b);
+				BSON bs;
+				bs.exportBSON(b);
+				cursor = mongo_find(conn, unit_ns.ptr, &b, null, 10, 0, 0);
+				//bson_destroy(&b);
+				
+				count = 0;
+				while(mongo_cursor_next(cursor)) {
+					bson_copy(&b, &cursor.current);
+					bson_destroy(&b);
+					count++;
+				}
+				
+				assert(count == 2);
+				mongo_cursor_destroy(cursor);
 			}
 			
-			assert(count == 2);
-			mongo_cursor_destroy(cursor);
-			
-			// find none
-			bson_buffer_init(&bb);
-			bson_append_long(&bb, "id", 1111);
-			bson_from_buffer(&b, &bb);
-			cursor = mongo_find(conn, unit_ns.ptr, &b, null, 1, 0, 0);
-			bson_destroy(&b);
-			
-			count = 0;
-			while(mongo_cursor_next(cursor)) {
-				bson_copy(&b, &cursor.current);
-				bson_destroy(&b);
-				count++;
+			{
+				// find none
+				BSON bs;
+				bs.append("id", cast(long)1111);
+				bs.exportBSON(b);
+				//bson_buffer_init(&bb);
+				//bson_append_long(&bb, "id", 1111);
+				//bson_from_buffer(&b, &bb);
+				cursor = mongo_find(conn, unit_ns.ptr, &b, null, 1, 0, 0);
+				//bson_destroy(&b);
+				
+				count = 0;
+				while(mongo_cursor_next(cursor)) {
+					bson_copy(&b, &cursor.current);
+					bson_destroy(&b);
+					count++;
+				}
+				
+				mongo_cursor_destroy(cursor);
+				assert(count == 0);
 			}
-			
-			mongo_cursor_destroy(cursor);
-			assert(count == 0);
-			
-			
 		}
 	}
 	
@@ -2702,6 +2724,12 @@ struct BSON {
 		data[cur++] = 0;
 		*cast(uint*)data.ptr = cur;
 		data.length = cur;
+	}
+	
+	bson opAssign() {
+		bson b;
+		exportBSON(b);
+		return b;
 	}
 	
 	void exportBSON(inout bson b) {

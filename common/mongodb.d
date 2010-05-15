@@ -307,7 +307,7 @@ BUILDING
 ------------------------------ */
 
 bson_buffer * bson_buffer_init( bson_buffer * b );
-bson_buffer * bson_ensure_space( bson_buffer * b , /*const*/ int bytesNeeded );
+//bson_buffer * bson_ensure_space( bson_buffer * b , /*const*/ int bytesNeeded );
 
 /**
 * @return the raw data.  you either should free this OR call bson_destroy not both

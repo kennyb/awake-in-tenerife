@@ -32,6 +32,7 @@
  */
 
 module kxml.xml;
+//import lib;
 version(Tango) {
 	import tango.text.Util:isspace=isSpace,stripl=triml,strip=trim,stripr=trimr,find=locatePattern,split,replace=substitute;
 	import tango.text.convert.Integer:tostring=toString,atoi=toInt;
