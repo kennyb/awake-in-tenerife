@@ -676,6 +676,7 @@ class Core {
 				//version(release) {
 					if(session.last_request + session.expire_time > request_time && session.online) {
 						user_session.hits++;
+						session.hits++;
 						session.last_request = request_time;
 						.uid = cur_conn.uid = session.uid;
 					} else {

@@ -36,12 +36,12 @@ unittest {
 
 class HttpRequest {
 	
-	static ubyte[4] ip[string][];
-	string req_header;
+	private static ubyte[4] ip[string][];
+	private string req_header;
 	string output_header;
 	string output;
-	string host;
-	ubyte[4][] ips;
+	private string host;
+	private ubyte[4][] ips;
 	
 	static this() {
 		static char seed[128];
@@ -65,7 +65,7 @@ class HttpRequest {
 		}
 	}
 	
-	void resolve() {
+	private void resolve() {
 		string host2 = host ~ "\0";
 		ubyte[16] hosts;
 		auto ret = resolve_ip4(host2.ptr, hosts.ptr, 4);

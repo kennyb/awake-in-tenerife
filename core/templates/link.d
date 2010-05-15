@@ -622,12 +622,13 @@ version(unittests) {
 class TemplateForm : TemplateLink {
 	
 	private static typeof(this)[] instances;
+	
 	static this() {
 		PNL.registerTemplate("form", &this.create);
 		PNL.registerTemplate("endform", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		if(cmd == "form") {
 			instances ~= new typeof(this)(inside, pnl);
 			PNLByte* p = pnl.newByte();

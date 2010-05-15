@@ -119,7 +119,7 @@ class TemplateTArea : TemplateTBox {
 		PNL.registerTemplate("textarea", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(inside, pnl);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
@@ -190,17 +190,17 @@ class TemplateTBox {
 		PNL.registerTemplate("autofill", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(inside, pnl);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
 	}
 
-	string* ptr_value;
-	size_t value_loc;
-	size_t value_end_loc;
-	string prerender;
+	private string* ptr_value;
+	private size_t value_loc;
+	private size_t value_end_loc;
+	private string prerender;
 	
 	this(string params, PNL* pnl) {
 		string type;

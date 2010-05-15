@@ -9,19 +9,6 @@ import edb;
 import panel;
 
 
-static this() {
-	PNL.exportFunction("logout", &logout);
-	
-	PNL.exportPublicFunction("login", &login);
-	PNL.exportFunctionArg("login", "email");
-	PNL.exportFunctionArg("login", "password");
-	PNL.exportFunctionArg("login", "sess_len");
-	
-	PNL.exportPublicFunction("tz", &set_timezone); // untested
-	PNL.exportFunctionArg("tz", "tz");
-}
-
-
 class UserAuth {
 	mixin(GenDataModel!("UserAuth", `
 		uint email_crc;
@@ -29,6 +16,15 @@ class UserAuth {
 		string email;
 		string password;
 	`));
+	
+	static this() {
+		PNL.exportFunction("logout", &func_logout);
+	
+		PNL.exportPublicFunction("login", &func_login);
+		PNL.exportFunctionArg("login", "email");
+		PNL.exportFunctionArg("login", "password");
+		PNL.exportFunctionArg("login", "sess_len");
+	}
 		
 	static int validate_user(string email, string passwd) {
 		//uint[] users = UserAuth.query(crc32(0, cast(ubyte*)email.ptr, email.length));
@@ -48,66 +44,55 @@ class UserAuth {
 		
 		return HACKING;
 	}
-}
-
-// functions
 	
-int login(string email, string passwd, uint session_length) {
-	int auth_uid = UserAuth.validate_user(email, passwd);
-	if(auth_uid > 0) {
-		if(cur_session is null) {
-			cur_conn.make_session();
-			.cur_session = cur_conn.session;
+	static int func_login() {
+		string* ptr_email = "email" in FUNC;
+		string* ptr_passwd = "password" in FUNC;
+		string* ptr_sesslen = "sess_len" in FUNC;
+		if(ptr_email && ptr_passwd && ptr_sesslen) {
+			//TODO!!! - do a check to validate that it's a good email.
+			return login(*ptr_email, *ptr_passwd, toUint(*ptr_sesslen));
 		}
 		
-		//assert(session == cur_conn.session); // this means that session !is null
-		cur_session.online = 1;
-		cur_session.uid = .uid = auth_uid;
-		cur_session.last_request = request_time;
-		session_length *= 60;
-		cur_session.expire_time = (session_length ? session_length : 30*60);
-		user_session = new UserSession(.uid);
-		if(user_session._id < 0) {
-			user_session.last_request = request_time;
+		return HACKING;
+	}
+	
+	static int login(string email, string passwd, uint session_length) {
+		int auth_uid = UserAuth.validate_user(email, passwd);
+		if(auth_uid > 0) {
+			if(cur_session is null) {
+				cur_conn.make_session();
+				.cur_session = cur_conn.session;
+			}
+			
+			//assert(session == cur_conn.session); // this means that session !is null
+			cur_session.online = 1;
+			cur_session.uid = .uid = auth_uid;
+			cur_session.last_request = request_time;
+			session_length *= 60;
+			cur_session.expire_time = (session_length ? session_length : 30*60);
+			user_session = new UserSession(.uid);
+			if(user_session._id < 0) {
+				user_session.last_request = request_time;
+			}
+			
+			user_session.hits++;
+			cur_session.time_delta = user_session.last_request;
+			// save???
 		}
 		
-		user_session.hits++;
-		cur_session.time_delta = user_session.last_request;
-		// save???
+		return auth_uid;
 	}
 	
-	return auth_uid;
-}
-
-int login() {
-	string* ptr_email = "email" in FUNC;
-	string* ptr_passwd = "password" in FUNC;
-	string* ptr_sesslen = "sess_len" in FUNC;
-	if(ptr_email && ptr_passwd && ptr_sesslen) {
-		//TODO!!! - do a check to validate that it's a good email.
-		return login(*ptr_email, *ptr_passwd, toUint(*ptr_sesslen));
-	}
-	
-	return HACKING;
-}
-
-int logout() {
-	cur_session.online = 0;
-	cur_session.save();
-	.uid = 0;
-	return SUCCESS;
-}
-
-int set_timezone() {
-	string* ptr_tz = "tz" in FUNC;
-	if(ptr_tz) {
-		int tz = toInt(*ptr_tz);
-		cur_session.timezone = -(tz*3600);
+	static int func_logout() {
+		cur_session.online = 0;
+		cur_session.save();
+		.uid = 0;
 		return SUCCESS;
 	}
-	
-	return FAILURE;
+
 }
+
 
 class Session {
 	// OPTIMIZE!! - later, store the language as a short instead of a string
@@ -131,8 +116,12 @@ class Session {
 		int online;
 	`));
 	
+	static this() {
+		PNL.exportPublicFunction("tz", &func_set_timezone); // untested
+		PNL.exportFunctionArg("tz", "tz");
+	}
 	
-	static string get_rand_sid() {
+	private static string get_rand_sid() {
 		char[26] output = '0';
 		string tmp;
 		
@@ -187,6 +176,17 @@ class Session {
 		
 		return null;
 	}
+	
+	static int func_set_timezone() {
+		string* ptr_tz = "tz" in FUNC;
+		if(ptr_tz) {
+			int tz = toInt(*ptr_tz);
+			cur_session.timezone = -(tz*3600);
+			return SUCCESS;
+		}
+		
+		return FAILURE;
+	}
 }
 
 
@@ -197,12 +197,4 @@ class UserSession {
 		int page_hits;
 	"));
 }
-
-
-
-/*
-class SID1Sessions {
-	mixin(IndexKeyUnordered!("Session", "sid1", "Session"));
-}
-*/
 

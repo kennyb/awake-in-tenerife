@@ -194,7 +194,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 		}
 		
-		void parse_query(PNL* pnl, inout string[string] params) {
+		private void parse_query(PNL* pnl, inout string[string] params) {
 			foreach(field, inout v; params) {
 				if(v[0] == '$') {
 					string var = v[1 .. $];
@@ -476,7 +476,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return this._id;
 	}
 	
-	int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 1) {
+	private int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 1) {
 		this.page_size = page_size;
 		this.page_offset = page_offset;
 		
@@ -488,7 +488,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return cursor != null;
 	}
 	
-	int query_pnl(bson* bson_query, int page_offset, int page_size) {
+	private int query_pnl(bson* bson_query, int page_offset, int page_size) {
 		this.page_size = page_size;
 		this.page_offset = page_offset;
 		current = -1;
@@ -2724,12 +2724,6 @@ struct BSON {
 		data[cur++] = 0;
 		*cast(uint*)data.ptr = cur;
 		data.length = cur;
-	}
-	
-	bson opAssign() {
-		bson b;
-		exportBSON(b);
-		return b;
 	}
 	
 	void exportBSON(inout bson b) {

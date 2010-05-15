@@ -24,24 +24,24 @@ class TemplateDate {
 	import tango.stdc.time;
 	import Integer = tango.text.convert.Integer;
 	
-	static typeof(this)[] instances;
+	private static typeof(this)[] instances;
 	static this() {
 		PNL.registerTemplate("date", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(inside, pnl);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
 	}
 	
-	uint format = FORMAT_DATE;
-	bool show_online;
-	bool adjust_tz;
+	private uint format = FORMAT_DATE;
+	private bool show_online;
+	private bool adjust_tz;
 	
-	int* ptr_date;
-	int date;
+	private int* ptr_date;
+	private int date;
 	
 	this(string params, PNL* pnl) {
 		string[string] opts;

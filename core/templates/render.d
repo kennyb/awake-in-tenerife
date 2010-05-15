@@ -11,13 +11,13 @@ class TemplateJS : TemplateInterface {
 		BEFORE_UNLOAD
 	}
 	
-	static typeof(this)[string] instances;
+	private static typeof(this)[string] instances;
 	static this() {
 		PNL.registerTemplate("js", &this.create);
 		PNL.registerTemplate("endjs", &this.create);
 	}
 
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		if(!(pnl.name in instances)) {
 			instances[pnl.name] = new typeof(this)(inside, pnl);
 		}
@@ -62,26 +62,26 @@ class TemplateJS : TemplateInterface {
 		}
 	}
 	
-	string panel;
-	string js_after;
+	private string panel;
+	private string js_after;
 	
-	static size_t begin_ptr;
-	static size_t save_ptr;
+	private static size_t begin_ptr;
+	private static size_t save_ptr;
 	
 	this(string inside, PNL* pnl) {
 		this.panel = pnl.name; 
 	}
 	
-	void render_load() {
+	private void render_load() {
 		begin_ptr = out_ptr;
 	}
 	
-	void render_end_load() {
+	private void render_end_load() {
 		Core.js_out ~= out_tmp[begin_ptr .. out_ptr].dup;
 		out_ptr = begin_ptr;
 	}
 	
-	void render_unload() {
+	private void render_unload() {
 		begin_ptr = out_ptr;
 		prt("kernel.unload('");
 		prt(panel);
@@ -90,7 +90,7 @@ class TemplateJS : TemplateInterface {
 		save_ptr = out_ptr;
 	}
 	
-	void render_end_unload() {
+	private void render_end_unload() {
 		auto js_out_ptr = Core.js_out.length;
 		auto processed_ptr = js_out_ptr;
 		auto len = out_ptr - save_ptr;
@@ -115,11 +115,11 @@ class TemplateJS : TemplateInterface {
 		out_ptr = begin_ptr;
 	}
 	
-	void render_beforeunload() {
+	private void render_beforeunload() {
 		errorln("not yet implemented...");
 	}
 	
-	void render_end_beforeunload() {
+	private void render_end_beforeunload() {
 		errorln("not yet implemented...");
 	}
 }
@@ -130,15 +130,15 @@ class TemplateRender : TemplateInterface {
 		PNL.registerTemplate("render", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(inside, pnl);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
 	}
 	
-	string panel;
-	string div;
+	private string panel;
+	private string div;
 	
 	this(string params, PNL* pnl) {
 		string[string] opts;
@@ -166,17 +166,18 @@ class TemplateImg : TemplateInterface {
 		PNL.registerTemplate("img", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(inside, pnl);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
 	}
 	
-	string prerender1;
-	string prerender2;
-	string* ptr_url;
-	char size;
+	private string prerender1;
+	private string prerender2;
+	private string* ptr_url;
+	private char size;
+	
 	this(string params, PNL* pnl) {
 		string[string] opts;
 		parse_options(params, opts);
@@ -248,15 +249,16 @@ class TemplateYouTube : TemplateInterface {
 		PNL.registerTemplate("youtube", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(PNL* pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(inside, pnl);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
 	}
 	
-	string prerender;
-	string js;
+	private string prerender;
+	private string js;
+	
 	this(string params, PNL* pnl) {
 		string[string] opts;
 		string* val;

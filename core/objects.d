@@ -96,12 +96,12 @@ class Url : TemplateObject {
 	}
 	
 	//OPTIMIZE!!! - merge int/uint long/ulong into one array
-	uint[string] isset;
-	long[string] ints;
-	ulong[string] uints;
-	string*[string] strings;
+	private uint[string] isset;
+	private long[string] ints;
+	private ulong[string] uints;
+	private string*[string] strings;
 	
-	void register(PNL* pnl, inout string[string] params) {
+	protected void register(PNL* pnl, inout string[string] params) {
 		string parent = "";
 		string* ptr_parent = "parent" in params;
 		if(ptr_parent) {
@@ -154,7 +154,7 @@ class Url : TemplateObject {
 		}
 	}
 	
-	void load() {
+	protected void load() {
 		if(strings.length) {
 			foreach(string str, inout string* val; strings) {
 				string* ptr_str = str in POST;

@@ -54,6 +54,7 @@ version(unittests) {
 	
 	class Test_option_parser : Unittest {
 		static this() { Unittest.add(typeof(this).stringof, new typeof(this));}
+		protected:
 		
 		void test() {
 			option_parser1();
