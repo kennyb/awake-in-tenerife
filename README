@@ -1,6 +1,4 @@
-preview release 1
-
-not really a whole lot you can do with it... wait for the docs and stuff
+so, there's not really a whole lot you can do with it, yet... wait for the docs and stuff
 
 BRIEF SUMMARY
 
@@ -10,19 +8,22 @@ BUILDING
 
 cd core
 
-# build the necessary libs (this only needs to be done once or if you get errors about missing files)
-make libs [M32=true]
+build the necessary libs (this only needs to be done once or if you get errors about missing files)
+# make libs [M32=true]
 
-# builds:
-# debug (default) - will give a lot errors and reload all panels every page load
-# release - compiles with optimization on
-#
-# options:
-# M32=true - required if you're on a 32 bit system
-# BYTECODE=true - will print the bytecode to the console as it's executed
-# WARN=true - turn on compiler warnings
+builds:
+ - debug (default) - will give a lot errors and reload all panels every page load
+ - release - compiles with optimization on
 
-make [release|debug] [M32=true] [BYTECODE=true] [WARN=true] [UNITTESTS=true]
+options:
+ - M32=true - required if you're on a 32 bit system
+ - BYTECODE=true - will print the bytecode to the console as it's executed
+ - WARN=true - turn on compiler warnings
+ - UNITTESTS=true - turn on on unittests
+
+# make [release|debug] [M32=true] [BYTECODE=true] [WARN=true] [UNITTESTS=true]
+
+usually, I write the unittests first, then keep trying with UNITTESTS=true until it runs properly, then I test it in debug mode
 
 LICENSE
 

@@ -71,9 +71,11 @@ void stdoutln(...) {
 		} else if(_arguments[i] == typeid(uint)) {
 			str ~= Integer.toString(va_arg!(uint)(_argptr));
 		} else if(_arguments[i] == typeid(ulong)) {
-			str ~= Integer.toString(va_arg!(ulong)(_argptr));
+			auto v = va_arg!(ulong)(_argptr);
+			str ~= Integer.toString(v, v < uint.max ? "" : "x#");
 		} else if(_arguments[i] == typeid(long)) {
-			str ~= Integer.toString(va_arg!(long)(_argptr));
+			auto v = va_arg!(long)(_argptr);
+			str ~= Integer.toString(v,  (v < int.max && v > int.min) ? "" : "x#");
 		} else if(_arguments[i] == typeid(float)) {
 			str ~= Float.toString(va_arg!(float)(_argptr));
 		} else if(_arguments[i] == typeid(double)) {
