@@ -134,7 +134,8 @@ else
 	CFLAGS+=-g
 	DFLAGS+= -d -g $(EXTRA)
 	ifeq ($(DMD),ldc)
-		DFLAGS+= -O0
+		#-annotate -op -D
+		DFLAGS+= -O0 -v-cg -noverify
 		DFLAGS+= -d-debug -d-version=notrelease -d-version=debug
 		LDFLAGS+= -disable-opt
 	else

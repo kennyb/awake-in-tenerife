@@ -123,7 +123,7 @@ void mongo_cursor_destroy(mongo_cursor* cursor);
 /* out can be NULL if you don't care about results. useful for commands */
 bson_bool_t mongo_find_one(mongo_connection* conn, const char* ns, bson* query, bson* fields, bson* out);
 
-int64_t mongo_count(mongo_connection* conn, const char* db, const char* coll, bson* query);
+int64_t mongo_count(mongo_connection* conn, const char* db, const char* coll, bson* query, int distinct);
 
 /* ----------------------------
    HIGHER LEVEL - indexes - command helpers eval

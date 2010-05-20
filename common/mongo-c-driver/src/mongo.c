@@ -321,7 +321,8 @@ mongo_reply * mongo_read_response( mongo_connection * conn ){
 }
 
 mongo_cursor* mongo_find(mongo_connection* conn, const char* ns, bson* query, bson* fields, int nToReturn, int nToSkip, int options){
-    int sl;
+    printf("mongo_find().. "); bson_print(query);
+	int sl;
     mongo_cursor * cursor;
     char * data;
     mongo_message * mm = mongo_message_create( 16 + /* header */
@@ -381,14 +382,19 @@ bson_bool_t mongo_find_one(mongo_connection* conn, const char* ns, bson* query, 
     }
 }
 
-int64_t mongo_count(mongo_connection* conn, const char* db, const char* ns, bson* query){
+int64_t mongo_count(mongo_connection* conn, const char* db, const char* ns, bson* query, int distinct){
     bson_buffer bb;
     bson cmd;
     bson out;
     int64_t count = -1;
 
     bson_buffer_init(&bb);
-    bson_append_string(&bb, "count", ns);
+    if(distinct) {
+        bson_append_string(&bb, "distinct", ns);
+    } else {
+        bson_append_string(&bb, "count", ns);
+    }
+
     if (query && bson_size(query) > 5) /* not empty */
         bson_append_bson(&bb, "query", query);
     bson_from_buffer(&cmd, &bb);

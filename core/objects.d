@@ -670,15 +670,15 @@ version(unittests) {
 			return (current < count);
 		}
 		
-		long testfunc_true(string args) {
+		static long testfunc_true(string args) {
 			return 1;
 		}
 		
-		long testfunc_false(string args) {
+		static long testfunc_false(string args) {
 			return 0;
 		}
 		
-		long testfunc_toInt(string args) {
+		static long testfunc_toInt(string args) {
 			return toInt(args);
 		}
 	}

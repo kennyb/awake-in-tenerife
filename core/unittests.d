@@ -58,6 +58,15 @@ version(unittests) {
 		
 		void test() {
 			option_parser1();
+			option_parser2();
+			option_parser3();
+			option_parser4();
+			option_parser5();
+			option_parser6();
+			option_parser7();
+			option_parser8();
+			option_parser9();
+			option_parser10();
 		}
 		
 		void option_parser1() {
@@ -172,7 +181,17 @@ version(unittests) {
 			parse_options(t, output);
 			
 			assert("$page_size" in output);
-			assert(output["$page_size"] == "1");
+			assert(output["$page_size"] == "2");
+		}
+		
+		void option_parser10() {
+			string t = "   {uid: 11} ";
+			
+			string[string] output;
+			parse_options(t, output);
+			
+			assert("uid" in output);
+			assert(output["uid"] == "11");
 		}
 	}
 }

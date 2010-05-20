@@ -917,7 +917,7 @@ final class PNL {
 	bool is_public;
 	
 	private int delegate()[int][string] obj_loops;
-	private long delegate(string args)[int][string] obj_funcs;
+	private long function(string args)[int][string] obj_funcs;
 	uint[string][uint] var_type;
 	char*[string][uint] var_ptr;
 	string*[string][uint] var_str;
@@ -1078,7 +1078,7 @@ final class PNL {
 		}
 	}
 	
-	void registerFunction(string name, long delegate(string args) func, bool global = false) {
+	void registerFunction(string name, long function(string args) func, bool global = false) {
 		if(global) {
 			errorln("global functions not yet available");
 		} else {
@@ -2147,9 +2147,13 @@ final class PNL {
 						inside = inside[1 .. $];
 					}
 					
-					int v_inst = find_var(inside);
+					int v_inst;
 					PNLByte* p = newByte();
-					if(v_inst >= 0) {
+					if((v_inst = find_func(inside)) >= 0) {
+						p.action = pnl_action_func_mask;
+						p.str_value = params;
+						p.ptr = cast(char*)&obj_funcs[inside][v_inst];
+					} else if((v_inst = find_var(inside)) >= 0) {
 						first_text = false;
 						
 						p.action = var_type[v_inst][inside];
@@ -2178,10 +2182,6 @@ final class PNL {
 								inlineError("could not find requested text parser: " ~ *val);
 							}
 						}
-					} else if((v_inst = find_func(inside)) >= 0) {
-						p.action = pnl_action_func_mask;
-						p.str_value = params;
-						p.ptr = cast(char*)&obj_funcs[inside][v_inst];
 					} else {
 						removeByte();
 						inlineError("variable '" ~ inside ~ "' is not registered");
@@ -2403,7 +2403,7 @@ final class PNL {
 				break;
 				case pnl_action_func_mask:
 					version(renderingbytecode) noticeln(cur, ": ptr(func)");
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					long val = func(p.str_value);
 					prt(Integer.toString(val));
 				break;
@@ -2468,7 +2468,7 @@ final class PNL {
 				break;
 				case (pnl_action_je | pnl_action_func_mask):
 					version(renderingbytecode) noticeln(cur, ": (jump equal (func)) ", p.new_location);
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					if(func(p.str_value) == p.value) {
 						version(renderingbytecode) noticeln(" jumping...");
 						i = p.new_location;
@@ -2499,7 +2499,7 @@ final class PNL {
 				break;
 				case (pnl_action_jne | pnl_action_func_mask):
 					version(renderingbytecode) noticeln(cur, ": (jump not equal (func)) ", p.new_location);
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					if(func(p.str_value) != p.value) {
 						version(renderingbytecode) noticeln(" jumping...");
 						i = p.new_location;
@@ -2523,7 +2523,7 @@ final class PNL {
 				break;
 				case (pnl_action_jg | pnl_action_func_mask):
 					version(renderingbytecode) noticeln(cur, ": (jump greater (func)) ", p.new_location);
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					if(func(p.str_value) > p.value) {
 						version(renderingbytecode) noticeln(" jumping...");
 						i = p.new_location;
@@ -2547,7 +2547,7 @@ final class PNL {
 				break;
 				case (pnl_action_jge | pnl_action_func_mask):
 					version(renderingbytecode) noticeln(cur, ": (jump greater equal (func)) ", p.new_location);
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					if(func(p.str_value) >= p.value) {
 						version(renderingbytecode) noticeln(" jumping...");
 						i = p.new_location;
@@ -2571,7 +2571,7 @@ final class PNL {
 				break;
 				case (pnl_action_jl | pnl_action_func_mask):
 					version(renderingbytecode) noticeln(cur, ": (jump less (func)) ", p.new_location);
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					if(func(p.str_value) < p.value) {
 						version(renderingbytecode) noticeln(" jumping...");
 						i = p.new_location;
@@ -2595,7 +2595,7 @@ final class PNL {
 				break;
 				case (pnl_action_jle | pnl_action_func_mask):
 					version(renderingbytecode) noticeln(cur, ": (jump less equal (func)) ", p.new_location);
-					long delegate(string) func = cast(long delegate(string))*cast(long delegate(string)*)p.ptr;
+					long function(string) func = cast(long function(string))*cast(long function(string)*)p.ptr;
 					if(func(p.str_value) <= p.value) {
 						version(renderingbytecode) noticeln(" jumping...");
 						i = p.new_location;

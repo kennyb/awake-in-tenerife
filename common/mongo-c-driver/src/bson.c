@@ -160,7 +160,7 @@ void bson_print_raw( const char * data , int depth ){
 	case bson_long: printf( "%lld" , bson_iterator_long( &i ) ); break;
         case bson_double: printf( "%f" , bson_iterator_double( &i ) ); break;
         case bson_bool: printf( "%s" , bson_iterator_bool( &i ) ? "true" : "false" ); break;
-        case bson_string: printf( "%s" , bson_iterator_string( &i ) ); break;
+        case bson_string: printf( "\"%s\"" , bson_iterator_string( &i ) ); break;
         case bson_null: printf( "null" ); break;
         case bson_oid: bson_oid_to_string(bson_iterator_oid(&i), oidhex); printf( "%s" , oidhex ); break;
         case bson_object:

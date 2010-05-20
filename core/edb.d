@@ -105,6 +105,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	private static Data[long] cache;
 	private static string obj_name = "` ~ name ~ `";
 	private static string ns;
+	private static string ns_cmd;
 	static this() {
 		edb_inits["`~name~`"] = &edb_init;
 		` ~ (export_template ? `
@@ -159,8 +160,9 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			pnl.registerLong("` ~ name ~ `._id", &obj._id);
 			pnl.registerUint("` ~ name ~ `.current", &obj.current);
 			pnl.registerUint("` ~ name ~ `.column", &obj.column);
-			//pnl.registerUint("` ~ name ~ `.count", &count);
-			pnl.registerFunction("` ~ name ~ `.total", &obj.total);
+			pnl.registerUint("` ~ name ~ `.count", &obj.num_results);
+			pnl.registerFunction("` ~ name ~ `.count", &count);
+			pnl.registerFunction("` ~ name ~ `.total", &count);
 			pnl.registerLoop("` ~ name ~ `", &obj.loop);
 			
 			return cast(TemplateObject)obj;
@@ -180,13 +182,12 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					int v_scope = pnl.find_var(value);
 					if(v_scope >= 0) {
 						auto type = pnl.var_type[v_scope][value];
-						//if(type == pnl_action_var_int || type == pnl_action_var_uint) {
 						if(type == pnl_action_var_ulong || type == pnl_action_var_long) {
 							ptr_id = cast(long*)pnl.var_ptr[v_scope][value];
 						}
 					}
 				} else if(value[0] >= '0' && value[0] <= '9') {
-					_id = toUlong(value);
+					_id = toLong(value);
 				}
 			} else {
 				parse_query(pnl, params);
@@ -201,22 +202,18 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					int v_scope = pnl.find_var(var);
 					if(v_scope >= 0) {
 						auto type = pnl.var_type[v_scope][var];
-						v = '$'  ~ Integer.toString(type) ~ ':' ~ Integer.toString(dyn_vars.length) ~ '$';
+						v = '$'  ~ Integer.toString(type) ~ ':' ~ Integer.toString(cast(int) dyn_vars.length) ~ '$';
 						if(type == pnl_action_var_str) {
 							dyn_vars ~= cast(char*) pnl.var_str[v_scope][var];
 						//TODO!!! - add functions - registerFunction()
 						} else {
 							dyn_vars ~= pnl.var_ptr[v_scope][var];
 						}
-						
-						//if(type == pnl_action_var_ulong || type == pnl_action_var_long) {
-						//	ptr_id = cast(long*)pnl.var_ptr[v_scope][value];
-						//}
 					}
-				} else if(v[0] == '{') {
+				} else if(v.length > 2 && v[0] == '{' && v[$-1] == '}') {
 					// TODO nested variables... for now, 1 level...
 					string[string] nested;
-					parse_options(v, nested);
+					parse_options(v[1 .. $-1], nested);
 					parse_query(pnl, nested);
 					v = make_json(nested);
 				}
@@ -245,6 +242,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		noticeln("intializing edb::", Edb.db, ".` ~ name ~ `");
 		typeof(this).ns = Edb.db ~ ".` ~ name ~ `\0";
 		typeof(this).ns.length = typeof(this).ns.length - 1;
+		typeof(this).ns_cmd = Edb.db ~ ".$cmd\0";
+		typeof(this).ns_cmd.length = typeof(this).ns_cmd.length - 1;
 		
 		// init the object
 		Data d;
@@ -315,13 +314,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	static mongo_cursor* query(bson* bson_query, int page_offset, int page_size) {
+	static mongo_cursor* _query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
 		mongo_cursor* c;
 		
 		//noticeln("finding... LIMIT ", page_offset * page_size, ", ", page_size, " ...");
 		//bson_print(bson_query);
 		
-		c = mongo_find(conn, ns.ptr, bson_query, null, page_size, page_offset * page_size, 0);
+		c = mongo_find(conn, (cmd ? ns_cmd.ptr : ns.ptr), bson_query, null, page_size, page_offset * page_size, 0);
 		
 		version(extra_checks) {
 			bson err;
@@ -335,22 +334,53 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return c;
 	}
 	
-	static long total(bson* query) {
-		//noticeln("total...");
-		//bson_print(query);
+	static long _count(bson* bson_query) {
+		BSON bs;
+		bson b;
+		bson output;
+		long num = -1;
 		
-		return mongo_count(conn, Edb.db.ptr, obj_name.ptr, query);
+		auto c = new Cursor(mongo_find(conn, ns_cmd.ptr, bson_query, null, 1, 0, 0));
+		
+		bson err;
+		if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
+			bson_print(&err);
+		}
+		
+		bson_destroy(&err);
+		
+		if(c.next()) {
+			num = c.get("n");
+		}
+		
+		return num;
 	}
 	
-	long total(string query) {
+	static long total() {
+		BSON bs;
 		bson b;
-		make_query(query, b);
-		long r = total(&b);
+		bs.append("count", obj_name);
+		bs.exportBSON(b);
+		long r = typeof(this)._count(&b);
 		bson_destroy(&b);
 		return r;
 	}
 	
-	
+	static long count(string str_query) {
+		if(str_query.length) {
+			bson b;
+			string[string] q;
+			parse_options(str_query, q, false);
+			q["$count"] = "\""~obj_name~'"';
+			
+			make_query(q, b);
+			long r = _count(&b);
+			bson_destroy(&b);
+			return r;
+		} else {
+			return total();
+		}
+	}
 	
 	void make_bson_struct(inout bson b) {
 		BSON bs;
@@ -405,7 +435,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	private bool skip_loop;
 	private uint current = -1;
 	private uint column = -1;
-	//uint count;
+	uint num_results;
 	
 	private uint* ptr_page_offset;
 	private uint* ptr_page_size;
@@ -437,7 +467,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	this(bson* bson_query, int page_offset = 0, int page_size = 1) {
-		query(bson_query, page_offset, page_size);
+		_query(bson_query, page_offset, page_size);
 		this();
 	}
 	
@@ -464,13 +494,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	int load(long id) {
+	long load(long id) {
 		bson b;
 		BSON bs;
 		bs.append("_id", id);
 		bs.exportBSON(b);
 		
-		cursor = query(&b, 0, 1);
+		cursor = _query(&b, 0, 1);
 		auto ret = loop();
 		mongo_cursor_destroy(cursor);
 		return this._id;
@@ -481,7 +511,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		this.page_offset = page_offset;
 		
 		bson b;
-		make_query(parsed_query, b);
+		make_query_local(parsed_query, b);
 		query_pnl(&b, this.page_offset, this.page_size);
 		bson_destroy(&b);
 		
@@ -495,7 +525,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		column = -1;
 		
 		mongo_cursor_destroy(cursor);
-		cursor = query(bson_query, page_offset, page_size);
+		cursor = _query(bson_query, page_offset, page_size);
 		loop();
 		if(cursor != null) {
 			skip_loop = true;
@@ -547,13 +577,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 							}
 						
 							static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte)) {
-								data.tupleof[j] = cast(ubyte) value;
+								data.tupleof[j] = cast(byte) value;
 							} else static if(is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
-								data.tupleof[j] = cast(ushort) value;
+								data.tupleof[j] = cast(short) value;
 							} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int)) {
-								data.tupleof[j] = cast(uint) value;
+								data.tupleof[j] = cast(int) value;
 							} else static if(is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long)) {
-								data.tupleof[j] = cast(ulong) value;
+								data.tupleof[j] = cast(long) value;
 							}
 						}
 						
@@ -816,17 +846,158 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return 0;
 	}
 	
-	private void make_query(string str_query, inout bson b) {
-		string[string] query;
-		parse_options(str_query, query, false);
-		make_query(query, b);
+	private static void make_query(string str_query, inout bson b) {
+		string[string] q;
+		parse_options(str_query, q, false);
+		make_query(q, b);
 	}
 	
-	private void make_query(inout string[string] parsed_query, inout bson b) {
+	private static void make_query(inout string[string] parsed_query, inout bson b) {
 		BSON bs;
 		
-		string orderby;
-		string hint;
+		string opt_orderby;
+		string opt_hint;
+		string opt_count;
+		string opt_distinct;
+		
+		if(parsed_query != null) {
+			// the following foreach has problems with ldc-0.9.2... tired of fixing D's bugs!
+			//foreach(label, val; parsed_query) {
+			foreach(label; parsed_query.keys) {
+				string val = parsed_query[label];
+				bool remove = true;
+				
+				size_t val_length = val.length;
+				if(val_length) {
+					
+					switch(label) {
+					case "$page_size":
+					case "$limit":
+						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
+						//page_size = toUint(val);
+						// error
+						break;
+						
+					case "$column_width":
+						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
+						//width = toUint(val);
+						// error
+						break;
+						
+					case "$page":
+					case "$page_offset":
+						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
+						//page_offset = toUint(val);
+						break;
+						
+					case "$orderby":
+						opt_orderby = val;
+						break;
+						
+					case "$count":
+						opt_count = val;
+						break;
+						
+					case "$distinct":
+						opt_distinct = val;
+						break;
+						
+					case "$hint":
+						opt_hint = val;
+						break;
+						
+					default:
+						remove = false;
+						if(val == "null") {
+							bs.append(label, bson_type.bson_null);
+						} else if(val == "undefined") {
+							bs.append(label, bson_type.bson_undefined);
+						} else if(val == "true") {
+							bs.append(label, true);
+						} else if(val == "false") {
+							bs.append(label, false);
+						} else if(val.ptr) {
+							if(val_length > 1) {
+								char v1 = val[0];
+								char v2 = val[$-1];
+							
+								if((v1 == '\"' && v2 == '\"') || (v1 == '\'' && v2 == '\'')) {
+									// string
+									bs.append(label, val[1 .. $-1]);
+									break;
+								} else if(v1 == '{' && v2 == '}') {
+									// object
+									bson obj_b;
+									make_query(val, obj_b);
+									bs.append(label, obj_b);
+									break;
+								} else if(find_c(label, '.') != -1) {
+									//TODO(0.2) - toDouble function
+									bs.append(label, toFloat(val));
+									break;
+								}
+							}
+							
+							long val_l = toLong(val);
+							if(val_l < int.max && val_l > int.min) {
+								bs.append(label, cast(int) val_l);
+							} else {
+								bs.append(label, val_l);
+							}
+						}
+					}
+				}
+			}
+		}
+	
+		if(opt_orderby != null || opt_hint != null || opt_count != null || opt_distinct != null) {
+			BSON query_bs;
+			bson bson_query;
+			bson bson_orderby;
+			bson bson_hint;
+			
+			bs.exportBSON(bson_query);
+			if(opt_count != null || opt_distinct != null) {
+				query_bs.append(opt_count != null ? "count" : "distinct", obj_name);
+			}
+			
+			if(opt_count != null && parsed_query.length) {
+				query_bs.append("query", bson_query);
+			}
+			
+			if(opt_distinct != null) {
+				query_bs.append("key", opt_distinct);
+			}
+			
+			if(opt_orderby != null) {
+				make_query(opt_orderby, bson_orderby);
+				query_bs.append("orderby", bson_orderby);
+			}
+			
+			if(opt_hint != null) {
+				make_query(opt_hint, bson_hint);
+				query_bs.append("hint", bson_hint);
+			}
+			
+			query_bs.exportBSON(b);
+		} else {
+			bs.exportBSON(b);
+		}
+	}
+	
+	private void make_query_local(string str_query, inout bson b) {
+		string[string] q;
+		parse_options(str_query, q, false);
+		make_query_local(q, b);
+	}
+	
+	private void make_query_local(inout string[string] parsed_query, inout bson b) {
+		BSON bs;
+		
+		string opt_orderby;
+		string opt_hint;
+		string opt_count;
+		string opt_distinct;
 		
 		if(parsed_query != null) {
 			// the following foreach has problems with ldc-0.9.2... tired of fixing D's bugs!
@@ -857,21 +1028,31 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 						break;
 						
 					case "$orderby":
-						orderby = val;
+						opt_orderby = val;
+						break;
+						
+					case "$count":
+						opt_count = val;
+						break;
+						
+					case "$distinct":
+						opt_distinct = val;
 						break;
 						
 					case "$hint":
-						hint = val;
+						opt_hint = val;
 						break;
 						
 					default:
 						remove = false;
 						if(val == "null") {
-							noticeln("TODO!!!! - not yet implemented");
-							//bson_append_null(&bb, label0.ptr);
+							bs.append(label, bson_type.bson_null);
 						} else if(val == "undefined") {
-							//bson_append_undefined(&bb, label0.ptr);
-							noticeln("TODO!!!! - not yet implemented");
+							bs.append(label, bson_type.bson_undefined);
+						} else if(val == "true") {
+							bs.append(label, true);
+						} else if(val == "false") {
+							bs.append(label, false);
 						} else if(val.ptr) {
 							if(val_length > 1) {
 								char v1 = val[0];
@@ -884,7 +1065,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								} else if(v1 == '{' && v2 == '}') {
 									// object
 									bson obj_b;
-									make_query(val, obj_b);
+									make_query_local(val, obj_b);
 									bs.append(label, obj_b);
 									break;
 								}
@@ -893,8 +1074,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 										// template variable
 										auto scope_offset = find_c(val, ':', 2);
 										if(scope_offset != -1) {
-											int type = toUint(val[1 .. scope_offset]);
-											int dyn_var = toUint(val[++scope_offset .. $-1]);
+											uint type = toUint(val[1 .. scope_offset]);
+											uint dyn_var = toUint(val[++scope_offset .. $-1]);
 											
 											if(dyn_var < dyn_vars.length) {
 												auto ptr_var = dyn_vars[dyn_var];
@@ -934,30 +1115,37 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 							}
 						}
 					}
-					
-					//if(remove) {
-					//	parsed_query.remove(label);
-					//}
 				}
 			}
 		}
 		
-		if(orderby != null || hint != null) {
+		if(opt_orderby != null || opt_hint != null || opt_count != null || opt_distinct != null) {
 			BSON query_bs;
 			bson bson_query;
 			bson bson_orderby;
 			bson bson_hint;
 			
 			bs.exportBSON(bson_query);
-			query_bs.append("query", bson_query);
 			
-			if(orderby != null) {
-				make_query(orderby, bson_orderby);
+			if(opt_count != null || opt_distinct != null) {
+				query_bs.append(opt_count != null ? "count" : "distinct", obj_name);
+			}
+			
+			if(opt_count == null || parsed_query.length) {
+				query_bs.append("query", bson_query);
+			}
+			
+			if(opt_distinct != null) {
+				query_bs.append("key", opt_distinct);
+			}
+			
+			if(opt_orderby != null) {
+				make_query_local(opt_orderby, bson_orderby);
 				query_bs.append("orderby", bson_orderby);
 			}
 			
-			if(hint != null) {
-				make_query(hint, bson_hint);
+			if(opt_hint != null) {
+				make_query_local(opt_hint, bson_hint);
 				query_bs.append("hint", bson_hint);
 			}
 			
@@ -965,6 +1153,9 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		} else {
 			bs.exportBSON(b);
 		}
+		
+		//noticeln("query...");
+		//bson_print(&b);
 	}
 	`;
 }
@@ -1292,6 +1483,7 @@ version(unittests) {
 			int count;
 			
 			bson b;
+			bson res;
 			bson obj;
 			bson err;
 			mongo_cursor* cursor;
@@ -1338,8 +1530,8 @@ version(unittests) {
 				
 				count = 0;
 				while(mongo_cursor_next(cursor)) {
-					bson_copy(&b, &cursor.current);
-					bson_destroy(&b);
+					bson_copy(&res, &cursor.current);
+					bson_destroy(&res);
 					count++;
 					
 					assert(count != 1 || bson_find(&it, &cursor.current, "id") == bson_type.bson_long);
@@ -1348,6 +1540,7 @@ version(unittests) {
 				
 				mongo_cursor_destroy(cursor);
 				assert(count == 1);
+				assert(mongo_count(conn, Edb.db.ptr, unit_collection.ptr, &b, false) == 1);
 			}
 			
 			{
@@ -1360,13 +1553,14 @@ version(unittests) {
 				
 				count = 0;
 				while(mongo_cursor_next(cursor)) {
-					bson_copy(&b, &cursor.current);
-					bson_destroy(&b);
+					bson_copy(&res, &cursor.current);
+					bson_destroy(&res);
 					count++;
 				}
 				
-				assert(count == 2);
 				mongo_cursor_destroy(cursor);
+				assert(count == 2);
+				assert(mongo_count(conn, Edb.db.ptr, unit_collection.ptr, null, false) == 2);
 			}
 			
 			{
@@ -1382,13 +1576,14 @@ version(unittests) {
 				
 				count = 0;
 				while(mongo_cursor_next(cursor)) {
-					bson_copy(&b, &cursor.current);
-					bson_destroy(&b);
+					bson_copy(&res, &cursor.current);
+					bson_destroy(&res);
 					count++;
 				}
 				
 				mongo_cursor_destroy(cursor);
 				assert(count == 0);
+				assert(mongo_count(conn, Edb.db.ptr, unit_collection.ptr, &b, false) == 0);
 			}
 		}
 	}
@@ -1716,7 +1911,7 @@ version(unittests) {
 		void insert() {
 			// generate a few photo tags for testing indexes
 			UnittestPhotoTag pt = new UnittestPhotoTag(0);
-			assert(pt.total("") == 0);
+			assert(UnittestPhotoTag.total == 0);
 			pt._id = -1; // a negative number means it's a new obj
 			pt.uid = 11;
 			pt.pid = 1;
@@ -1726,11 +1921,11 @@ version(unittests) {
 			pt.comment = "picture 1";
 			pt.save();
 			
-			assert(pt.total("") == 1);
-			assert(pt.total("_id: 1") == 1);
-			assert(pt.total("_id: 2") == 0);
-			assert(pt.total("_id: 3") == 0);
-			assert(pt.total("uid: 11") == 1);
+			assert(UnittestPhotoTag.total == 1);
+			assert(UnittestPhotoTag.count("_id: 1") == 1);
+			assert(UnittestPhotoTag.count("_id: 2") == 0);
+			assert(UnittestPhotoTag.count("_id: 3") == 0);
+			assert(UnittestPhotoTag.count("uid: 11") == 1);
 			
 			pt._id = -2;
 			pt.uid = 1058;
@@ -1741,11 +1936,11 @@ version(unittests) {
 			pt.comment = "picture 2";
 			pt.save();
 			
-			assert(pt.total("") == 2);
-			assert(pt.total("_id: 1") == 1);
-			assert(pt.total("_id: 2") == 1);
-			assert(pt.total("_id: 3") == 0);
-			assert(pt.total("uid: 11") == 1);
+			assert(UnittestPhotoTag.total == 2);
+			assert(UnittestPhotoTag.count("_id: 1") == 1);
+			assert(UnittestPhotoTag.count("_id: 2") == 1);
+			assert(UnittestPhotoTag.count("_id: 3") == 0);
+			assert(UnittestPhotoTag.count("uid: 11") == 1);
 			
 			pt._id = -3;
 			pt.uid = 11;
@@ -1756,11 +1951,11 @@ version(unittests) {
 			pt.comment = "picture 2";
 			pt.save();
 			
-			assert(pt.total("") == 3);
-			assert(pt.total("_id: 1") == 1);
-			assert(pt.total("_id: 2") == 1);
-			assert(pt.total("_id: 3") == 1);
-			assert(pt.total("uid: 11") == 2);
+			assert(UnittestPhotoTag.total == 3);
+			assert(UnittestPhotoTag.count("_id: 1") == 1);
+			assert(UnittestPhotoTag.count("_id: 2") == 1);
+			assert(UnittestPhotoTag.count("_id: 3") == 1);
+			assert(UnittestPhotoTag.count("uid: 11") == 2);
 		}
 		
 		void looping() {
@@ -1798,6 +1993,9 @@ version(unittests) {
 			assert(ptags._id == 1);
 			assert(ptags.uid == 11);
 			assert(!ptags.loop());
+			
+			assert(ptags.count("uid: 11") == 2);
+			assert(UnittestPhotoTag.count("uid: 11") == 2);
 			
 			ptags = new UnittestPhotoTag(`$orderby: {_id: -1}, comment: "picture 2", $page_size: 2`);
 			assert(ptags.loop());
@@ -2164,31 +2362,45 @@ version(unittests) {
 			PNL.parse_text(`
 				<?interface panel:'edb8' ?>
 				<?load UnittestPhotoTag ?>
-				total:<?=UnittestPhotoTag.total {uid: 11} ?>
+				count:<?=UnittestPhotoTag.count {uid: 11} ?>
 			`);
 			
+			assert(UnittestPhotoTag.count("{uid: 11}") == 2);
 			assert("edb8" in PNL.pnl);
 			PNL.pnl["edb8"].render();
-			assert(out_tmp[0 .. out_ptr] == `total:2`);
+			assert(out_tmp[0 .. out_ptr] == `count:2`);
 		}
 		
 		void template8_1() {
 			//TODO!!! - make the functions global
 			PNL.parse_text(`
 				<?interface panel:'edb8_1' ?>
-				total:<?=UnittestPhotoTag.total {uid: 11} ?>
+				count:<?=UnittestPhotoTag.count {uid: 11} ?>
 			`);
 			
 			assert("edb8_1" in PNL.pnl);
 			PNL.pnl["edb8_1"].render();
-			assert(out_tmp[0 .. out_ptr] == `total:2`);
+			assert(out_tmp[0 .. out_ptr] == `count:2`);
+		}
+		
+		void template8_2() {
+			//TODO!!! - allow for empty counts
+			PNL.parse_text(`
+				<?interface panel:'edb8_2' ?>
+				<?load UnittestPhotoTag ?>
+				count:<?=UnittestPhotoTag.count {} ?>
+			`);
+			
+			assert("edb8_2" in PNL.pnl);
+			PNL.pnl["edb8_2"].render();
+			assert(out_tmp[0 .. out_ptr] == `count:2`);
 		}
 		
 		void template9() {
 			PNL.parse_text(`
 				<?interface panel:'edb9' ?>
 				<?load UnittestPhotoTag {uid: 11, $page_size: 1} ?>
-				(<?=UnittestPhotoTag.total {uid: 11, $page_size: 1} ?>)
+				(<?=UnittestPhotoTag.count {uid: 11, $page_size: 1} ?>)
 				_id:<?=UnittestPhotoTag._id%>,uid:<?=UnittestPhotoTag.uid?>,d_created:<?=UnittestPhotoTag.d_created?>
 			`);
 			
@@ -2203,7 +2415,7 @@ version(unittests) {
 			PNL.parse_text(`
 				<?interface panel:'edb10' ?>
 				<?load Url {pic: string} ?>
-				(<?=Url.pic?>:<?=UnittestPhotoTag.total {comment: $Url.pic }?>)
+				(<?=Url.pic?>:<?=UnittestPhotoTag.count {comment: $Url.pic }?>)
 				<?loop UnittestPhotoTag {comment: $Url.pic, $page_size: 2, $orderby: {uid: 1}} ?>
 					_id:<?=UnittestPhotoTag._id%>,uid:<?=UnittestPhotoTag.uid?>,d_created:<?=UnittestPhotoTag.d_created?>,
 				<?endloop?>
@@ -2561,10 +2773,14 @@ template BSONType(T) {
 		const int BSONType = bson_type.bson_long;
 	} else static if(is(T == float) || is(T == double)) {
 		const int BSONType = bson_type.bson_double;
+	} else static if(is(T == bool)) {
+		const int BSONType = bson_type.bson_bool;
 	} else static if(is(T == string)) {
 		const int BSONType = bson_type.bson_string;
 	} else static if(is(T == bson)) {
 		const int BSONType = bson_type.bson_object;
+	} else static if(is(T == bson_type)) {
+		const int BSONType = 0;
 	} else {
 		static assert(false, "caca " ~ T.stringof);
 		const int BSONType = 0;
@@ -2661,12 +2877,138 @@ unittest {
 		
 		bson_buffer_destroy(&bb);
 	}
+}
+
+class Cursor {
+	import mongodb;
 	
-	//bson_from_buffer(&b, &bb);
+	mongo_cursor* c;
+	
+	this(mongo_cursor* cursor) {
+		this.c = cursor;
+	}
+	
+	~this() {
+		mongo_cursor_destroy(c);
+	}
+	
+	int next() {
+		if(c && mongo_cursor_next(c)) {
+			return 1;
+		}
+		
+		return 0;
+	}
+	
+	// TODO!!!! - template this!
+	long get(string label) {
+		bson_iterator it;
+		
+		size_t ds = 0;
+		string data = cast(string) c.current.data[4 .. cast(int) *c.current.data];
+		char* ptr = c.current.data + 4;
+		bson_type type = bson_type.bson_null;
+		while(type) {
+			type = cast(bson_type) *ptr++;
+			
+			auto label_len = find_c(data, 0) - 1;
+			string label2 = cast(string)ptr[0 .. label_len];
+			ptr += label_len + 1;
+			if(label == label2) {
+				break;
+			}
+			
+			
+			switch(type) {
+			case bson_type.bson_eoo:
+				return 0;
+				
+			case bson_type.bson_undefined:
+			case bson_type.bson_null:
+				break;
+				
+			case bson_type.bson_bool:
+				ptr += 1;
+				break;
+				
+			case bson_type.bson_int:
+				ptr += 4;
+				break;
+				
+			case bson_type.bson_long:
+			case bson_type.bson_double:
+			case bson_type.bson_timestamp:
+			case bson_type.bson_date:
+				ptr += 8;
+				break;
+				
+			case bson_type.bson_oid:
+				ptr += 12;
+				break;
+				
+			case bson_type.bson_string:
+			case bson_type.bson_symbol:
+			case bson_type.bson_code:
+				ptr += 4 + *cast(int*)ptr;
+				break;
+				
+			case bson_type.bson_bindata:
+				ptr += 5 + *cast(int*)ptr;
+				break;
+				
+			case bson_type.bson_object:
+			case bson_type.bson_array:
+			case bson_type.bson_codewscope:
+				ptr += *cast(int*)ptr;
+				break;
+				
+			case bson_type.bson_dbref:
+				ptr += 4 + 12 + *cast(int*)ptr;
+				break;
+				
+			/*
+			case bson_type.bson_regex:
+			{
+				const char * s = bson_iterator_value(i);
+				const char * p = s;
+				p += strlen(p)+1;
+				p += strlen(p)+1;
+				ds = p-s;
+				break;
+			}
+			*/
+			default:
+			}
+		}
+		
+		switch(type) {
+		case bson_type.bson_int:
+			return *cast(int*)ptr;
+			
+		case bson_type.bson_long:
+			return *cast(long*)ptr;
+			
+		case bson_type.bson_double:
+			return cast(long) *cast(double*)ptr;
+			
+		case bson_type.bson_bool:
+			return cast(long) *cast(byte*)ptr;
+			
+		case bson_type.bson_string:
+			size_t len = *cast(int*)ptr - 1;
+			ptr += 4;
+			return toLong(cast(string) ptr[0 .. len]);
+		
+		default:
+			return 0;
+		}
+	}
 }
 
 //TODO!! - make custom types for all the types that aren't native D types
 struct BSON {
+	const string empty_bson = "\005\0\0\0\0";
+	
 	alias char[] string;
 	char[] data;
 	uint cur = 4;
@@ -2684,10 +3026,14 @@ struct BSON {
 		static if(is(V == float)) {
 			space(/*type*/ 1 + id_len + /*str\0*/ 1 + /*double*/ 8);
 		} else static if(is(V == string)) {
-			int val_len = value.length;
+			uint val_len = cast(uint) value.length;
 			space(/*type*/ 1 + id_len + /*str\0*/ 1 + /*strlen*/ 4 + val_len + /*str\0*/ 1);
 		} else static if(is(V == bson)) {
-			size_t bson_size = *cast(int*)value.data;
+			size_t bson_size = 0;
+			if(value.data) {
+				bson_size = *cast(int*)value.data;
+			}
+			
 			space(/*type*/ 1 + id_len + /*str\0*/ 1 + bson_size + /*str\0*/ 1);
 		} else {
 			space(/*type*/ 1 + id_len + /*str\0*/ 1 + V.sizeof);
@@ -2699,6 +3045,7 @@ struct BSON {
 		cur += id_len;
 		data[cur++] = 0;
 		
+		static assert(bool.sizeof == 1);
 		static if(is(V == string)) {
 			*cast(int*)(data.ptr + cur) = val_len + 1;
 			cur += int.sizeof;
@@ -2710,10 +3057,16 @@ struct BSON {
 			*cast(double*)(data.ptr + cur) = *cast(double*)&val;
 			cur += double.sizeof;
 		} else static if(is(V == bson)) {
-			memcpy(data.ptr + cur, value.data, bson_size);
-			cur += bson_size;
+			if(bson_size) {
+				memcpy(data.ptr + cur, value.data, bson_size);
+				cur += bson_size;
+			} else {
+				memcpy(data.ptr + cur, empty_bson.ptr, empty_bson.length);
+				cur += empty_bson.length;
+			}
 		} else {
 			*cast(V*)(data.ptr + cur) = value;
+			//memcpy(data.ptr + cur, value.data, value.length);
 			cur += V.sizeof;
 		}
 	}
