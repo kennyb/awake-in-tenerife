@@ -8,6 +8,9 @@ enum {
 	FORMAT_DATE = 1,
 	FORMAT_DATE_USA,
 	FORMAT_DELTA,
+	FORMAT_DELTA_HOURS,
+	FORMAT_DELTA_MINUTES,
+	FORMAT_DELTA_SECONDS,
 	FORMAT_DATETIME,
 	FORMAT_DATETIME_USA,
 	FORMAT_MONTHDATE,
@@ -36,7 +39,7 @@ class TemplateDate {
 		p.dg = &instances[$ - 1].render;
 	}
 	
-	private uint format = FORMAT_DATE;
+	private uint format = FORMAT_DATETIME;
 	private bool show_online;
 	private bool adjust_tz;
 	
@@ -81,35 +84,43 @@ class TemplateDate {
 		val = "format" in opts;
 		if(val) {
 			adjust_tz = true;
-			if(*val == "date") {
-				format = FORMAT_DATE;
-			} else if(*val == "date_usa") {
-				format = FORMAT_DATE_USA;
-			} else if(*val == "delta") {
-				format = FORMAT_DELTA;
-			} else if(*val == "datetime_usa") {
-				format = FORMAT_DATETIME_USA;
-			} else if(*val == "datetime") {
-				format = FORMAT_DATETIME;
-			} else if(*val == "monthdate") {
-				format = FORMAT_MONTHDATE;
+			switch(*val) {
+			case "date":
+				format = FORMAT_DATE; break;
+			case "date_usa":
+				format = FORMAT_DATE_USA; break;
+			case "delta":
+				format = FORMAT_DELTA; break;
+			case "delta_hours":
+				format = FORMAT_DELTA_HOURS; break;
+			case "delta_minutes":
+				format = FORMAT_DELTA_MINUTES; break;
+			case "delta_seconds":
+				format = FORMAT_DELTA_SECONDS; break;
+			case "datetime_usa":
+				format = FORMAT_DATETIME_USA; break;
+			case "datetime":
+				format = FORMAT_DATETIME; break;
+			case "monthdate":
+				format = FORMAT_MONTHDATE; break;
 				adjust_tz = false;
-			} else if(*val == "datedelta") {
-				format = FORMAT_DATEDELTA;
-			} else if(*val == "datedelta_usa") {
-				format = FORMAT_DATEDELTA;
-			} else if(*val == "year") {
-				format = FORMAT_YEAR;
-			} else if(*val == "month") {
-				format = FORMAT_MONTH;
-			} else if(*val == "month_txt") {
-				format = FORMAT_MONTH_TXT;
-			} else if(*val == "day") {
-				format = FORMAT_DAY;
-			} else if(*val == "weekday") {
-				format = FORMAT_WEEKDAY;
+			case "datedelta":
+				format = FORMAT_DATEDELTA; break;
+			case "datedelta_usa":
+				format = FORMAT_DATEDELTA; break;
+			case "year":
+				format = FORMAT_YEAR; break;
+			case "month":
+				format = FORMAT_MONTH; break;
+			case "month_txt":
+				format = FORMAT_MONTH_TXT; break;
+			case "day":
+				format = FORMAT_DAY; break;
+			case "weekday":
+				format = FORMAT_WEEKDAY; break;
+			default:
+				errorln("unrecognized format: ", *val);
 			}
-			
 		}
 	}
 	
@@ -140,9 +151,18 @@ class TemplateDate {
 			prt(tmp[0 .. str_len]);
 			break;
 		case FORMAT_DELTA:
+		case FORMAT_DELTA_HOURS:
+		case FORMAT_DELTA_MINUTES:
+		case FORMAT_DELTA_SECONDS:
 		case FORMAT_DATEDELTA:
 		case FORMAT_DATEDELTA_USA:
 			auto delta = request_time/* + session.timezone*/ - date;
+			bool is_future = false;
+			if(request_time < date) {
+				is_future = true;
+				delta = -delta;
+			}
+			
 			if(delta < 10) {
 				if(show_online) {
 					prt("online");
@@ -150,45 +170,82 @@ class TemplateDate {
 					prt("seconds ago");
 				}
 			} else {
+				if(delta >= 24*60*60) {
+					if(format == FORMAT_DATEDELTA) {
+						auto str_len = strftime(cast(char*)&tmp, 40, cast(char*)"%d/%m/%Y\0", tm_struct);
+						prt(tmp[0 .. str_len]);
+						break;
+					} else if(format == FORMAT_DATEDELTA_USA) {
+						auto str_len = strftime(cast(char*)&tmp, 40, cast(char*)"%m/%d/%Y\0", tm_struct);
+						prt(tmp[0 .. str_len]);
+						break;
+					} else {
+						auto days = delta / 24*60*60;
+						delta -= days * 24*60*60;
+						
+						prt(Integer.toString(days));
+						prt(" days");
+						if(days == 1) {
+							out_ptr--;
+						}
+						
+						if(format == FORMAT_DELTA ) {
+							goto delta_ending;
+						} else {
+							prt(" ");
+						}
+					}
+				}
+				
+				if(delta >= 60*60) {
+					auto hours = delta / (60*60);
+					delta -= hours * 60*60;
+					
+					prt(Integer.toString(hours));
+					prt(" hours");
+					if(hours == 1) {
+						out_ptr--;
+					}
+					
+					if(format == FORMAT_DELTA || format == FORMAT_DELTA_HOURS) {
+						goto delta_ending;
+					} else {
+						prt(" ");
+					}
+				}
+				
+				if(delta >= 60) {
+					auto minutes = delta / 60;
+					delta -= minutes * 60;
+					
+					prt(Integer.toString(minutes));
+					prt(" minutes");
+					if(minutes == 1) {
+						out_ptr--;
+					}
+					
+					if(format == FORMAT_DELTA || format == FORMAT_DELTA_HOURS || format == FORMAT_DELTA_MINUTES) {
+						goto delta_ending;
+					} else {
+						prt(" ");
+					}
+				}
+				
 				if(delta < 60) {
 					prt(Integer.toString(delta));
 					prt(" seconds");
 					if(delta == 1) {
 						out_ptr--;
 					}
-				} else if(delta < 60*60) {
-					auto minutes = delta / 60;
-					prt(Integer.toString(minutes));
-					prt(" minutes");
-					if(minutes == 1) {
-						out_ptr--;
-					}
-				} else if(delta < 24*60*60) {
-					auto hours = delta / (60*60);
-					prt(Integer.toString(hours));
-					prt(" hours");
-					if(hours == 1) {
-						out_ptr--;
-					}
-				} else {
-					if(format == FORMAT_DATEDELTA) {
-						auto str_len = strftime(cast(char*)&tmp, 40, cast(char*)"%d/%m/%Y\0", tm_struct);
-						prt(tmp[0 .. str_len]);
-					} else if(format == FORMAT_DATEDELTA_USA) {
-						auto str_len = strftime(cast(char*)&tmp, 40, cast(char*)"%m/%d/%Y\0", tm_struct);
-						prt(tmp[0 .. str_len]);
-					} else {
-						auto days = delta / (24*60*60);
-						prt(Integer.toString(days));
-						prt(" days");
-						if(days == 1) {
-							out_ptr--;
-						}
-					}
 				}
 				
+delta_ending:
 				if(format == FORMAT_DELTA || delta < 24*60*60) {
-					prt(" ago");
+					if(is_future) {
+						prt(" from now");
+					} else {
+						prt(" ago");
+					}
 				}
 			}
 			
