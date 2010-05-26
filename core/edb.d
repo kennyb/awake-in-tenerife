@@ -373,7 +373,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			q.parse_options(str_query, false);
 			q["$count"] = "\""~obj_name~'"';
 			
-			b.make_query(q);
+			make_query(b, q);
 			long r = _count(&b);
 			bson_destroy(&b);
 			return r;
@@ -388,7 +388,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		foreach(j, caca; data.tupleof) {
 			string field = this.data.tupleof[j].stringof["this.data.".length .. $];
 			
-			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
+			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short) || is(typeof(data.tupleof[j]) == bool)) {
 				// int1 / int2
 				bs.append(field, cast(int) data.tupleof[j]);
 			} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int) || is(typeof(data.tupleof[j]) == float) || is(typeof(data.tupleof[j]) == double) || is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long) || is(typeof(data.tupleof[j]) == string)) {
@@ -511,7 +511,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		this.page_offset = page_offset;
 		
 		bson b;
-		b.make_query_local(parsed_query);
+		make_query_local(b, parsed_query);
 		query_pnl(&b, this.page_offset, this.page_size);
 		bson_destroy(&b);
 		
@@ -847,9 +847,9 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	private static void make_query(inout bson b, string str_query) {
-		string[string] q;
-		q.parse_options(str_query, false);
-		b.make_query(q);
+		string[string] query;
+		query.parse_options(str_query, false);
+		make_query(b, query);
 	}
 	
 	private static void make_query(inout bson b, inout string[string] parsed_query) {
@@ -928,7 +928,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								} else if(v1 == '{' && v2 == '}') {
 									// object
 									bson obj_b;
-									obj_b.make_query(val);
+									make_query(obj_b, val);
 									bs.append(label, obj_b);
 									break;
 								} else if(find_c(label, '.') != -1) {
@@ -970,12 +970,12 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 			
 			if(opt_orderby != null) {
-				bson_orderby.make_query(opt_orderby);
+				make_query(bson_orderby, opt_orderby);
 				query_bs.append("orderby", bson_orderby);
 			}
 			
 			if(opt_hint != null) {
-				bson_hint.make_query(opt_hint);
+				make_query(bson_hint, opt_hint);
 				query_bs.append("hint", bson_hint);
 			}
 			
@@ -985,10 +985,10 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	private void make_query_local(inout bson b, string str_quer) {
-		string[string] q;
-		q.parse_options(str_query, false);
-		b.make_query_local(q);
+	private void make_query_local(inout bson b, string str_query) {
+		string[string] query;
+		query.parse_options(str_query, false);
+		make_query_local(b, query);
 	}
 	
 	private void make_query_local(inout bson b, inout string[string] parsed_query) {
@@ -1065,7 +1065,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								} else if(v1 == '{' && v2 == '}') {
 									// object
 									bson obj_b;
-									obj_b.make_query_local(val);
+									make_query_local(obj_b, val);
 									bs.append(label, obj_b);
 									break;
 								}
@@ -1140,12 +1140,12 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 			
 			if(opt_orderby != null) {
-				bson_orderby.make_query_local(opt_orderby);
+				make_query_local(bson_orderby, opt_orderby);
 				query_bs.append("orderby", bson_orderby);
 			}
 			
 			if(opt_hint != null) {
-				bson_hint.make_query_local(opt_hint);
+				make_query_local(bson_hint, opt_hint);
 				query_bs.append("hint", bson_hint);
 			}
 			
