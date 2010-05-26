@@ -2203,7 +2203,7 @@ void parse_config(string config_file) {
 	config_file = clean_text(config_file);
 	string[string] c_config;
 	
-	parse_options(config_file, c_config);
+	c_config.parse_options(config_file);
 	
 	
 	/*
@@ -2420,6 +2420,7 @@ int main(string[] args) {
 	}
 	
 	debug {
+		request_time = cast(int)time(null);
 		create_default_objects();
 	}
 	
@@ -2445,7 +2446,7 @@ void load_files() {
 	if(settings.static_files.length) {
 		
 		string[string] files;
-		parse_options(settings.static_files, files);
+		files.parse_options(settings.static_files);
 		foreach(real_name, file_loc; files) {
 			FilePath fp = new FilePath(file_loc);
 			if(fp.isFolder()) {

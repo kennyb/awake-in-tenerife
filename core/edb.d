@@ -118,10 +118,10 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		private long* ptr_id;
 		private char*[] dyn_vars;
 		
-		private static TemplateObject factory(PNL* pnl, inout string[string] params) {
+		private static TemplateObject factory(inout PNL pnl, inout string[string] params) {
 			// factory method to produce these objects :)
 			typeof(this) obj = new typeof(this)(pnl, params);
-			//static assert(obj.register, "you must add the method to class `~ name ~ ` :: void register(PNL* pnl, string[string] params)");
+			//static assert(obj.register, "you must add the method to class `~ name ~ ` :: void register(inout PNL pnl, string[string] params)");
 			obj.register(pnl, params);
 			
 			foreach(j, b; obj.data.tupleof) {
@@ -168,7 +168,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			return cast(TemplateObject)obj;
 		}
 		
-		this(PNL* pnl, inout string[string] params) {
+		this(inout PNL pnl, inout string[string] params) {
 			string[string] parsed_params;
 			string* ptr_value;
 			string value;
@@ -195,7 +195,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 		}
 		
-		private void parse_query(PNL* pnl, inout string[string] params) {
+		private void parse_query(inout PNL pnl, inout string[string] params) {
 			foreach(field, inout v; params) {
 				if(v[0] == '$') {
 					string var = v[1 .. $];
@@ -213,7 +213,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				} else if(v.length > 2 && v[0] == '{' && v[$-1] == '}') {
 					// TODO nested variables... for now, 1 level...
 					string[string] nested;
-					parse_options(v[1 .. $-1], nested);
+					nested.parse_options(v[1 .. $-1]);
 					parse_query(pnl, nested);
 					v = make_json(nested);
 				}
@@ -367,13 +367,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	static long count(string str_query) {
-		if(str_query.length) {
+		if(str_query.length && str_query != "{}") {
 			bson b;
 			string[string] q;
-			parse_options(str_query, q, false);
+			q.parse_options(str_query, false);
 			q["$count"] = "\""~obj_name~'"';
 			
-			make_query(q, b);
+			b.make_query(q);
 			long r = _count(&b);
 			bson_destroy(&b);
 			return r;
@@ -455,7 +455,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	this(string str_query, int page_offset = 0, int page_size = 1) {
 		this();
 		//string[string] query;
-		parse_options(str_query, saved_query, true);
+		saved_query.parse_options(str_query, true);
 		if(load(saved_query, page_offset, page_size)) {
 			loop();
 			if(cursor != null) {
@@ -511,7 +511,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		this.page_offset = page_offset;
 		
 		bson b;
-		make_query_local(parsed_query, b);
+		b.make_query_local(parsed_query);
 		query_pnl(&b, this.page_offset, this.page_size);
 		bson_destroy(&b);
 		
@@ -846,13 +846,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return 0;
 	}
 	
-	private static void make_query(string str_query, inout bson b) {
+	private static void make_query(inout bson b, string str_query) {
 		string[string] q;
-		parse_options(str_query, q, false);
-		make_query(q, b);
+		q.parse_options(str_query, false);
+		b.make_query(q);
 	}
 	
-	private static void make_query(inout string[string] parsed_query, inout bson b) {
+	private static void make_query(inout bson b, inout string[string] parsed_query) {
 		BSON bs;
 		
 		string opt_orderby;
@@ -928,7 +928,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								} else if(v1 == '{' && v2 == '}') {
 									// object
 									bson obj_b;
-									make_query(val, obj_b);
+									obj_b.make_query(val);
 									bs.append(label, obj_b);
 									break;
 								} else if(find_c(label, '.') != -1) {
@@ -970,12 +970,12 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 			
 			if(opt_orderby != null) {
-				make_query(opt_orderby, bson_orderby);
+				bson_orderby.make_query(opt_orderby);
 				query_bs.append("orderby", bson_orderby);
 			}
 			
 			if(opt_hint != null) {
-				make_query(opt_hint, bson_hint);
+				bson_hint.make_query(opt_hint);
 				query_bs.append("hint", bson_hint);
 			}
 			
@@ -985,13 +985,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	private void make_query_local(string str_query, inout bson b) {
+	private void make_query_local(inout bson b, string str_quer) {
 		string[string] q;
-		parse_options(str_query, q, false);
-		make_query_local(q, b);
+		q.parse_options(str_query, false);
+		b.make_query_local(q);
 	}
 	
-	private void make_query_local(inout string[string] parsed_query, inout bson b) {
+	private void make_query_local(inout bson b, inout string[string] parsed_query) {
 		BSON bs;
 		
 		string opt_orderby;
@@ -1065,7 +1065,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								} else if(v1 == '{' && v2 == '}') {
 									// object
 									bson obj_b;
-									make_query_local(val, obj_b);
+									obj_b.make_query_local(val);
 									bs.append(label, obj_b);
 									break;
 								}
@@ -1140,12 +1140,12 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 			
 			if(opt_orderby != null) {
-				make_query_local(opt_orderby, bson_orderby);
+				bson_orderby.make_query_local(opt_orderby);
 				query_bs.append("orderby", bson_orderby);
 			}
 			
 			if(opt_hint != null) {
-				make_query_local(opt_hint, bson_hint);
+				bson_hint.make_query_local(opt_hint);
 				query_bs.append("hint", bson_hint);
 			}
 			
@@ -1701,7 +1701,7 @@ version(unittests) {
 			string comment;
 		`, true));
 		
-		void register(PNL* pnl, inout string[string] params) {
+		void register(inout PNL pnl, inout string[string] params) {
 			// do nothing...
 		}
 	}
@@ -3083,6 +3083,14 @@ struct BSON {
 		finish();
 		b.owned = 0;
 		b.data = data.ptr;
+	}
+}
+
+class Collection {
+	
+	bool connect(string host, int port = 27017) {
+		
+		return true;
 	}
 }
 

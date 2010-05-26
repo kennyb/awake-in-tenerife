@@ -10,8 +10,8 @@ import shared;
 		PNL.registerTemplate("submit", &this.create);
 	}
 	
-	static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -22,7 +22,7 @@ import shared;
 	size_t value_end_loc;
 	string prerender;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string text;
 		string clicked_text;
 		string css_class;
@@ -32,7 +32,7 @@ import shared;
 		string* val;
 		
 		string[string] opts;
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		val = "text" in opts;
 		if(val) {
@@ -119,15 +119,15 @@ class TemplateTArea : TemplateTBox {
 		PNL.registerTemplate("textarea", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
 	}
 	
-	this(string params, PNL* pnl) {
-		super(params, pnl);
+	this(inout PNL pnl, string params) {
+		super(pnl, params);
 		
 		string prerender2 = prerender[value_end_loc+1 .. $];
 		prerender = prerender[0 .. value_loc-8];
@@ -139,7 +139,7 @@ class TemplateTArea : TemplateTBox {
 		string cols;
 		string[string] opts;
 		
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		if(!ptr_value) {
 			val = "value" in opts;
@@ -190,8 +190,8 @@ class TemplateTBox {
 		PNL.registerTemplate("autofill", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -202,7 +202,7 @@ class TemplateTBox {
 	private size_t value_end_loc;
 	private string prerender;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string type;
 		string active_class;
 		string inactive_class;
@@ -220,7 +220,7 @@ class TemplateTBox {
 		string[string] opts;
 		string* val;
 		
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		val = "type" in opts;
 		if(val && *val == "password") {

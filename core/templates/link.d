@@ -14,9 +14,9 @@ class TemplateLink {
 		PNL.registerTemplate("endlink", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(inout PNL pnl, string cmd, string inside) {
 		if(cmd == "link") {
-			instances ~= new typeof(this)(inside, pnl);
+			instances ~= new typeof(this)(pnl, inside);
 			PNLByte* p = pnl.newByte();
 			p.action = pnl_action_template;
 			p.dg = &instances[$ - 1].render;
@@ -29,7 +29,7 @@ class TemplateLink {
 		}
 	}
 	
-	this(string params, PNL* pnl, bool ignore = false) {
+	this(inout PNL pnl, string params, bool ignore = false) {
 		string rpc_link;
 		string href;
 		string func_href;
@@ -64,13 +64,13 @@ class TemplateLink {
 		ulong ivar;
 		ulong istr;
 		
-		parse_options(params, link_opts);
+		link_opts.parse_options(params);
 		
 		string* val;
 		val = "panels" in link_opts;
 		if(val) {
 			if((*val)[0] == '{') {
-				parse_options(*val, panels);
+				panels.parse_options(*val);
 			} else {
 				size_t loc = find_c(*val, ':');
 				if(loc != -1) {
@@ -81,7 +81,7 @@ class TemplateLink {
 		
 		val = "args" in link_opts;
 		if(val && (*val)[0] == '{') {
-			parse_options(*val, args);
+			args.parse_options(*val);
 		}
 		
 		val = "func" in link_opts;
@@ -90,7 +90,7 @@ class TemplateLink {
 			in_func = true;
 			val = "func_args" in link_opts;
 			if(val && (*val)[0] == '{') {
-				parse_options(*val, func_args);
+				func_args.parse_options(*val);
 			}
 		}
 		
@@ -628,9 +628,9 @@ class TemplateForm : TemplateLink {
 		PNL.registerTemplate("endform", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(inout PNL pnl, string cmd, string inside) {
 		if(cmd == "form") {
-			instances ~= new typeof(this)(inside, pnl);
+			instances ~= new typeof(this)(pnl, inside);
 			PNLByte* p = pnl.newByte();
 			p.action = pnl_action_template;
 			p.dg = &instances[$ - 1].render;
@@ -642,14 +642,14 @@ class TemplateForm : TemplateLink {
 		}
 	}
 	
-	this(string args, PNL* pnl) {
-		super(args, pnl, true);
+	this(inout PNL pnl, string params) {
+		super(pnl, params, true);
 		
 		string* val;
 		string[string] link_opts;
 		string custom_class;
 		
-		parse_options(args, link_opts);
+		link_opts.parse_options(params);
 		
 		val = "class" in link_opts;
 		if(val) {
@@ -670,7 +670,7 @@ class TemplateForm : TemplateLink {
 		var_type = null;
 		var_loc = null;
 		
-		bool multipart = (find_s(args, "multipart") != -1 ? true : false);
+		bool multipart = (find_s(params, "multipart") != -1 ? true : false);
 		link = `<form method="post"` ~ (multipart ? ` enctype="multipart/form-data"` : null) ~  ` action="`;
 		
 		

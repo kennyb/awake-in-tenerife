@@ -17,7 +17,7 @@ The static method of the object can add a reference to itself in the array, and 
 
 */
 
-extern void delegate() new_object(string name, PNL* pnl, inout string[string] params = null) {
+extern void delegate() new_object(inout PNL pnl, string name, inout string[string] params = null) {
 	//errorln("*** Loading Object: ", pnl.name, " :: ", name);
 	
 	// static objects
@@ -59,12 +59,12 @@ extern void delegate() new_object(string name, PNL* pnl, inout string[string] pa
 	}
 	
 	//errorln("*** New Object: ", pnl.name, " :: ", name, " ", instance);
-	TemplateObject function(PNL* pnl, inout string[string] params)* ptr_obj = name in available_objects;
+	TemplateObject function(inout PNL pnl, inout string[string] params)* ptr_obj = name in available_objects;
 	
 	if(ptr_obj) {
 		instance_count[pnl.name][name] = instance;
 		
-		TemplateObject function(PNL* pnl, inout string[string] params) obj_init = *ptr_obj;
+		TemplateObject function(inout PNL pnl, inout string[string] params) obj_init = *ptr_obj;
 		TemplateObject obj = obj_init(pnl, params);
 		normal_objects[pnl.name][name][instance] = obj;
 		if(obj) {
@@ -88,7 +88,7 @@ static this() {
 class Url : TemplateObject {
 	static const string name = "Url";
 	
-	static TemplateObject factory(PNL* pnl, inout string[string] params) {
+	static TemplateObject factory(inout PNL pnl, inout string[string] params) {
 		// factory method to produce these objects ;)
 		typeof(this) obj = new typeof(this)();
 		obj.register(pnl, params);
@@ -101,7 +101,7 @@ class Url : TemplateObject {
 	private ulong[string] uints;
 	private string*[string] strings;
 	
-	protected void register(PNL* pnl, inout string[string] params) {
+	protected void register(inout PNL pnl, inout string[string] params) {
 		string parent = "";
 		string* ptr_parent = "parent" in params;
 		if(ptr_parent) {
@@ -251,7 +251,7 @@ version(unittests) {
 class Array : TemplateObject {
 	static const string name = "Array";
 	
-	static TemplateObject factory(PNL* pnl, inout string[string] params) {
+	static TemplateObject factory(inout PNL pnl, inout string[string] params) {
 		// factory method to produce these objects ;)
 		typeof(this) obj = new typeof(this)();
 		obj.register(pnl, params);
@@ -285,7 +285,7 @@ class Array : TemplateObject {
 	uint page = 0;
 	uint page_size = 1000000;
 	
-	void register(PNL* pnl, inout string[string] params) {
+	void register(inout PNL pnl, inout string[string] params) {
 		string* ptr_value;
 		string value;
 		
@@ -509,7 +509,7 @@ version(unittests) {
 class R_Stats : TemplateObject {
 	static const string name = "Stats";
 	static R_Stats stats;
-	static TemplateObject factory(PNL* pnl, inout string[string] params) {
+	static TemplateObject factory(inout PNL pnl, inout string[string] params) {
 		// factory method to produce these objects :)
 		return cast(TemplateObject)stats;
 	}
@@ -525,7 +525,7 @@ class R_Stats : TemplateObject {
 	int page_requests;
 	
 	
-	void register(PNL* pnl, inout string[string] params) {
+	void register(inout PNL pnl, inout string[string] params) {
 		pnl.registerInt(name ~ ".request_queries", &request_queries);
 		/*
 		pnl.registerString(name ~ ".firstname", &firstname);
@@ -550,7 +550,7 @@ version(unittests) {
 		uint url_uid;
 		int random = 22;
 		
-		void register(PNL* pnl, inout string[string] params) {
+		void register(inout PNL pnl, inout string[string] params) {
 			pnl.registerUint("url_uid", &url_uid);
 			pnl.registerInt("random", &random);
 		}
@@ -588,7 +588,7 @@ version(unittests) {
 		string text, empty_text;
 		string[] numbers;
 		
-		void register(PNL* pnl, inout string[string] params) {
+		void register(inout PNL pnl, inout string[string] params) {
 			my_inst = inst++;
 			pnl.registerUint("number", &number);
 			pnl.registerUint("number2", &number2);

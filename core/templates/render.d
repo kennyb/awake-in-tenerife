@@ -17,14 +17,14 @@ class TemplateJS : TemplateInterface {
 		PNL.registerTemplate("endjs", &this.create);
 	}
 
-	private static void create(PNL* pnl, string cmd, string inside) {
+	private static void create(inout PNL pnl, string cmd, string inside) {
 		if(!(pnl.name in instances)) {
-			instances[pnl.name] = new typeof(this)(inside, pnl);
+			instances[pnl.name] = new typeof(this)(pnl, inside);
 		}
 		
 		string[string] opts;
 		
-		parse_options(inside, opts);
+		opts.parse_options(inside);
 		
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
@@ -68,7 +68,7 @@ class TemplateJS : TemplateInterface {
 	private static size_t begin_ptr;
 	private static size_t save_ptr;
 	
-	this(string inside, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		this.panel = pnl.name; 
 	}
 	
@@ -130,8 +130,8 @@ class TemplateRender : TemplateInterface {
 		PNL.registerTemplate("render", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -140,12 +140,12 @@ class TemplateRender : TemplateInterface {
 	private string panel;
 	private string div;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string[string] opts;
 		string* val_div = "div" in opts;
 		string* val_panel = "panel" in opts;
 		
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		if(val_div && val_panel) {
 			panel = *val_panel;
@@ -166,8 +166,8 @@ class TemplateImg : TemplateInterface {
 		PNL.registerTemplate("img", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -178,9 +178,9 @@ class TemplateImg : TemplateInterface {
 	private string* ptr_url;
 	private char size;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string[string] opts;
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		string* val_url = "url" in opts;
 		string* val_size = "size" in opts;
@@ -249,8 +249,8 @@ class TemplateYouTube : TemplateInterface {
 		PNL.registerTemplate("youtube", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -259,11 +259,11 @@ class TemplateYouTube : TemplateInterface {
 	private string prerender;
 	private string js;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string[string] opts;
 		string* val;
 		
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		val = "vid" in opts;
 		if(val) {

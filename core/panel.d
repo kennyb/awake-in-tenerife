@@ -8,7 +8,7 @@ import shared;
 import objects;
 version(unittests) import unittests;
 
-//extern(C) void delegate() new_object(int scope_level, string name, PNL* pnl, string[string] params);
+//extern(C) void delegate() new_object(int scope_level, string name, inout PNL pnl, string[string] params);
 
 struct Resource {
 	string name;
@@ -27,11 +27,11 @@ struct Interface {
 }
 
 interface TemplateInterface {
-	static void create(PNL* pnl, string cmd, string inside);
+	static void create(inout PNL pnl, string cmd, string inside);
 }
 
 interface TemplateObject {
-	void register(PNL* pnl, inout string[string] params);
+	void register(inout PNL pnl, inout string[string] params);
 	void load();
 }
 
@@ -239,7 +239,7 @@ final class PNL {
 	private static string[string][string] lang;
 	private static string[] idiomas;
 	private static string default_idioma = "en";
-	private static void function(PNL* pnl, string cmd, string inside)[string] templates;
+	private static void function(inout PNL pnl, string cmd, string inside)[string] templates;
 	private static int function()[string] public_funcs;
 	private static int function()[string] funcs;
 	private static string[][string] func_args;
@@ -377,7 +377,7 @@ final class PNL {
 			
 			content = replace_cc(content, '\n', ' ');
 			string[string] text;
-			parse_options(content, text);
+			text.parse_options(content);
 			
 			lang[file_lang] = text;
 		} else {
@@ -438,7 +438,7 @@ final class PNL {
 							type = PNL_TYPE_PANEL;
 							
 							string[string] options;
-							parse_options(inside, options);
+							options.parse_options(inside);
 							
 							val = "preserve_newlines" in options;
 							if(val) {
@@ -546,7 +546,7 @@ final class PNL {
 							
 							debug preserve_newlines = true;
 							string[string] options;
-							parse_options(inside, options);
+							options.parse_options(inside);
 							
 							val = "preserve_newlines" in options;
 							if(val) {
@@ -754,7 +754,7 @@ final class PNL {
 							inside = new_text[inline_start+6 .. inline_end];
 							if(inside.length) {
 								string[string] options;
-								parse_options(inside, options);
+								options.parse_options(inside);
 								
 								val = "func" in options;
 								if(val) {
@@ -765,7 +765,7 @@ final class PNL {
 										val = "args" in options;
 										if(val) {
 											string[string] args;
-											parse_options(*val, args);
+											args.parse_options(*val);
 											foreach(this_val, real_val; options) {
 												panel_txt = replace_ss(panel_txt, "$this." ~ this_val, real_val);
 												panel_txt = replace_ss(panel_txt, "this." ~ this_val, real_val);
@@ -883,7 +883,7 @@ final class PNL {
 		}
 	}
 	
-	static void registerTemplate(string template_name, void function(PNL* pnl, string, string) func) {
+	static void registerTemplate(string template_name, void function(inout PNL pnl, string, string) func) {
 		templates[template_name] = func;
 	}
 	
@@ -1111,7 +1111,7 @@ final class PNL {
 	}
 	
 	alias registerObj registerIndex;
-	static void registerObj(string name, TemplateObject function(PNL* pnl, inout string[string] params) factory) {
+	static void registerObj(string name, TemplateObject function(inout PNL pnl, inout string[string] params) factory) {
 		available_objects[name] = factory;
 	}
 	
@@ -1848,11 +1848,11 @@ final class PNL {
 						string[string] options;
 						string[string] params = null;
 						if(is_params == true) {
-							parse_options(inside[ii .. $], params);
+							params.parse_options(inside[ii .. $]);
 							inside = trim(inside[0 .. ii]);
 						}
 						
-						void delegate() ee = new_object(inside, &this, params);
+						void delegate() ee = new_object(this, inside, params);
 						if(ee) {
 							PNLByte* p = newByte();
 							p.action = pnl_action_void_delegate;
@@ -1895,7 +1895,7 @@ final class PNL {
 							string vname;
 							string vdefault;
 							
-							parse_options(inside, options);
+							options.parse_options(inside);
 							
 							val = "name" in options;
 							if(val) {
@@ -1990,7 +1990,7 @@ final class PNL {
 							string vname;
 							uint vtype = pnl_action_var_uint;
 							
-							parse_options(inside, options);
+							options.parse_options(inside);
 							
 							val = "name" in options;
 							if(val) {
@@ -2079,7 +2079,7 @@ final class PNL {
 						if(inside.length) {
 							string[string] options;
 							
-							parse_options(inside, options);
+							options.parse_options(inside);
 							
 							val = "name" in options;
 							if(val) {
@@ -2119,8 +2119,8 @@ final class PNL {
 							text[i-2] = '?';
 							continue;
 						} else if(cmd in templates) {
-							void function(PNL* pnl, string cmd, string inside) pp = templates[cmd];
-							pp(&this, cmd, inside);
+							void function(inout PNL pnl, string cmd, string inside) pp = templates[cmd];
+							pp(this, cmd, inside);
 						} else {
 							int v_inst = find_var(cmd);
 					
@@ -2139,7 +2139,7 @@ final class PNL {
 					string params;
 					if(pos != -1) {
 						params = inside[cast(size_t)pos+1 .. $];
-						parse_options(params, opts);
+						opts.parse_options(params);
 						inside = inside[0 .. cast(size_t)pos];
 					}
 					

@@ -13,8 +13,8 @@ class TemplatePager : TemplateInterface {
 		PNL.registerTemplate("pager", &this.create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -26,12 +26,12 @@ class TemplatePager : TemplateInterface {
 	private int* ptr_last_page;
 	private TemplateLink link;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string[string] opts;
 		string page_var;
 		string* val;
 		
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		val = "page_var" in opts;
 		if(val) {
@@ -98,7 +98,7 @@ class TemplatePager : TemplateInterface {
 			params ~= " args: {" ~ page_var ~ `: "!!page!!"}`;
 		}
 		
-		link = new TemplateLink(params, pnl);
+		link = new TemplateLink(pnl, params);
 	}
 	
 	void render() {

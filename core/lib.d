@@ -218,7 +218,7 @@ string clean_text(string text) {
 
 
 // no return types, unless it's an array, then it returns the { ....
-void parse_options(string text, inout string[string] options, bool string_quotes = false) {
+void parse_options(inout string[string] options, string text, bool string_quotes = false) {
 	text = trim(text);
 	auto text_len = text.length;
 	

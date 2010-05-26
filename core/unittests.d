@@ -73,7 +73,7 @@ version(unittests) {
 			string t = "{ label: \"options, yeah\", label2: $variable, label3: {label1: \"lala:\", label2: `tex xtt2`}}";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("label" in output);
 			assert("label2" in output);
@@ -87,7 +87,7 @@ version(unittests) {
 			string t = "label: \"options, yeah\", label2: $variable, label3: {label1: \"lala:\", label2: `tex xtt2`}";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("label" in output);
 			assert("label2" in output);
@@ -101,7 +101,7 @@ version(unittests) {
 			string t = `label: {m: "home"} label2: "setavailability" label3: {date: $date}`;
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("label" in output);
 			assert("label2" in output);
@@ -115,7 +115,7 @@ version(unittests) {
 			string t = "label: 1 label2: 11 label3: '11'";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("label" in output);
 			assert("label2" in output);
@@ -129,7 +129,7 @@ version(unittests) {
 			string t = "$label: 1 'label2': 11 $label3: '11'";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("$label" in output);
 			assert("label2" in output);
@@ -143,7 +143,7 @@ version(unittests) {
 			string t = "'label': 1 label2: 11 '$label3': '11'";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("label" in output);
 			assert("label2" in output);
@@ -157,7 +157,7 @@ version(unittests) {
 			string t = "label: 1";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("label" in output);
 			assert(output["label"] == "1");
@@ -167,7 +167,7 @@ version(unittests) {
 			string t = "label";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert(!("label" in output));
 			assert(output == null);
@@ -178,7 +178,7 @@ version(unittests) {
 			string t = "$page_size: 2";
 			
 			string[string] output;
-			parse_options(t, output);
+			output.parse_options(t);
 			
 			assert("$page_size" in output);
 			assert(output["$page_size"] == "2");
@@ -188,7 +188,7 @@ version(unittests) {
 			string t = "   {uid: 11} ";
 			
 			string[string] output;
-			parse_options(t, output);
+			output = parse_options(t);
 			
 			assert("uid" in output);
 			assert(output["uid"] == "11");

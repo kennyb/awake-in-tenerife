@@ -29,11 +29,11 @@ class TemplateDate {
 	
 	private static typeof(this)[] instances;
 	static this() {
-		PNL.registerTemplate("date", &this.create);
+		PNL.registerTemplate("date", &create);
 	}
 	
-	private static void create(PNL* pnl, string cmd, string inside) {
-		instances ~= new typeof(this)(inside, pnl);
+	private static void create(inout PNL pnl, string cmd, string inside) {
+		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
 		p.dg = &instances[$ - 1].render;
@@ -46,12 +46,12 @@ class TemplateDate {
 	private int* ptr_date;
 	private int date;
 	
-	this(string params, PNL* pnl) {
+	this(inout PNL pnl, string params) {
 		string[string] opts;
 		string s_date;
 		string* val;
 		
-		parse_options(params, opts);
+		opts.parse_options(params);
 		
 		val = "date" in opts;
 		if(val) {
