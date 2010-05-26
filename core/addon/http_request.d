@@ -94,28 +94,37 @@ class HttpRequest {
 			
 			request ~= " HTTP/1.0\r\nConnection: close\r\nAccept-Encoding:\r\nAccept: text/plain\r\nHost: " ~ host ~ "\r\n" ~ req_header;
 			auto s = socket_tcp4b();
+			auto d = io_fd(s);
 			
-			for(uint i = 0; i < ips.length; i++) {
-				auto ret = socket_connect4(s, cast(char*)ips[i].ptr, port);
-			
-				if(ret >= 0) {
+			if(d) {
+				tai6464 t;
+				taia_now(&t);
+				taia_addsec(&t, &t, 1);
+				io_timeout(d, t);
 				
-					int cur;
-					while((ret = write(s, request.ptr, request.length)) >= 0) {
-						cur += ret;
-						if(cur == request.length) {
-							output.length = 0;
-							cur = 0;
-							char[1024] tmp;
-							while((ret = read(s, tmp.ptr, 1024)) >= 0) {
-								if(ret == 0) {
-									io_close(s);
-									return parse();
+				for(uint i = 0; i < ips.length; i++) {
+					auto ret = socket_connect4(s, cast(char*)ips[i].ptr, port);
+				
+					if(ret >= 0) {
+					
+						int cur;
+						while((ret = write(s, request.ptr, request.length)) >= 0) {
+							cur += ret;
+							if(cur == request.length) {
+								output.length = 0;
+								cur = 0;
+								//OPTIMIZE!! - this can probably be read directly into the string
+								char[1024] tmp;
+								while((ret = read(s, tmp.ptr, 1024)) >= 0) {
+									if(ret == 0) {
+										io_close(s);
+										return parse();
+									}
+									
+									output.length = output.length + ret;
+									memcpy(&output[cur], tmp.ptr, ret);
+									cur += ret;
 								}
-								
-								output.length = output.length + ret;
-								memcpy(&output[cur], tmp.ptr, ret);
-								cur += ret;
 							}
 						}
 					}

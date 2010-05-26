@@ -516,7 +516,7 @@ long io_trywrite(long d,char* buf,ulong len);
 long io_waitwrite(long d,char* buf,ulong len);
 
 /* modify timeout attribute of file descriptor */
-//void io_timeout(long d,tai6464 t);
+void io_timeout(long d, tai6464 t);
 
 /* like io_tryread but will return -2,errno=ETIMEDOUT if d has a timeout
  * associated and it is passed without input being there */
@@ -1086,71 +1086,6 @@ int stralloc_diff(stralloc* a,stralloc* b);
  * string b[0], b[1], ..., b[n]=='\0'. */
 int stralloc_diffs(stralloc* a,char* b);
 
-/+
-//#define stralloc_equal(a,b) (!stralloc_diff((a),(b)))
-//#define stralloc_equals(a,b) (!stralloc_diffs((a),(b)))
-
-/* stralloc_0 appends \0 */
-//#define stralloc_0(sa) stralloc_append(sa,"")
-
-/* stralloc_catulong0 appends a '0' padded ASCII representation of in */
-int stralloc_catulong0(stralloc* sa,ulong buf_in,size_t n);
-
-/* stralloc_catlong0 appends a '0' padded ASCII representation of in */
-int stralloc_catlong0(stralloc* sa,long buf_in,size_t n);
-
-/* stralloc_free frees the storage associated with sa */
-void stralloc_free(stralloc* sa);
-
-//#define stralloc_catlong(sa,l) (stralloc_catlong0((sa),(l),0))
-//#define stralloc_catuint0(sa,i,n) (stralloc_catulong0((sa),(i),(n)))
-//#define stralloc_catint0(sa,i,n) (stralloc_catlong0((sa),(i),(n)))
-//#define stralloc_catint(sa,i) (stralloc_catlong0((sa),(i),0))
-
-/* remove last char.  Return removed byte as ubyte (or -1 if stralloc was empty). */
-int stralloc_chop(stralloc* sa);
-
-/* remove trailing "\r\n", "\n" or "\r".  Return number of removed chars (0,1 or 2) */
-int stralloc_chomp(stralloc* sa);
-
-/* write stralloc to buffer */
-int buffer_putsa(buffer* b,stralloc* sa);
-/* write stralloc to buffer and flush */
-int buffer_putsaflush(buffer* b,stralloc* sa);
-
-/* these "read token" functions return 0 if the token was complete or
- * EOF was hit or -1 on error.  In contrast to the non-stralloc token
- * functions, the separator is also put in the stralloc; use
- * stralloc_chop or stralloc_chomp to get rid of it. */
-
-/* WARNING!  These token reading functions will not clear the stralloc!
- * They _append_ the token to the contents of the stralloc.  The idea is
- * that this way these functions can be used on non-blocking sockets;
- * when you get signalled EAGAIN, just call the functions again when new
- * data is available. */
-
-/* read token from buffer to stralloc */
-int buffer_get_token_sa(buffer* b,stralloc* sa,char* charset,size_t setlen);
-/* read line from buffer to stralloc */
-int buffer_getline_sa(buffer* b,stralloc* sa);
-
-/* same as buffer_get_token_sa but empty sa first */
-int buffer_get_new_token_sa(buffer* b,stralloc* sa,char* charset,size_t setlen);
-/* same as buffer_getline_sa but empty sa first */
-int buffer_getnewline_sa(buffer* b,stralloc* sa);
-
-typedef int (*sa_predicate)(stralloc* sa);
-
-/* like buffer_get_token_sa but the token ends when your predicate says so */
-int buffer_get_token_sa_pred(buffer* b,stralloc* sa,sa_predicate p);
-/* same, but clear sa first */
-int buffer_get_new_token_sa_pred(buffer* b,stralloc* sa,sa_predicate p);
-
-
-/* make a buffer from a stralloc.
- * Do not change the stralloc after this! */
-void buffer_fromsa(buffer* b,stralloc* sa);
-
 /* A struct tai value is an integer between 0 inclusive and 2^64
  * exclusive. The format of struct tai is designed to speed up common
  * operations; applications should not look inside struct tai.
@@ -1267,6 +1202,73 @@ uint taia_fmtfrac(char *s,tai6464 *t);
 
 /* buf_initialize t to secs seconds. */
 void taia_uint(tai6464 *t,uint secs);
+
+
+/+
+//#define stralloc_equal(a,b) (!stralloc_diff((a),(b)))
+//#define stralloc_equals(a,b) (!stralloc_diffs((a),(b)))
+
+/* stralloc_0 appends \0 */
+//#define stralloc_0(sa) stralloc_append(sa,"")
+
+/* stralloc_catulong0 appends a '0' padded ASCII representation of in */
+int stralloc_catulong0(stralloc* sa,ulong buf_in,size_t n);
+
+/* stralloc_catlong0 appends a '0' padded ASCII representation of in */
+int stralloc_catlong0(stralloc* sa,long buf_in,size_t n);
+
+/* stralloc_free frees the storage associated with sa */
+void stralloc_free(stralloc* sa);
+
+//#define stralloc_catlong(sa,l) (stralloc_catlong0((sa),(l),0))
+//#define stralloc_catuint0(sa,i,n) (stralloc_catulong0((sa),(i),(n)))
+//#define stralloc_catint0(sa,i,n) (stralloc_catlong0((sa),(i),(n)))
+//#define stralloc_catint(sa,i) (stralloc_catlong0((sa),(i),0))
+
+/* remove last char.  Return removed byte as ubyte (or -1 if stralloc was empty). */
+int stralloc_chop(stralloc* sa);
+
+/* remove trailing "\r\n", "\n" or "\r".  Return number of removed chars (0,1 or 2) */
+int stralloc_chomp(stralloc* sa);
+
+/* write stralloc to buffer */
+int buffer_putsa(buffer* b,stralloc* sa);
+/* write stralloc to buffer and flush */
+int buffer_putsaflush(buffer* b,stralloc* sa);
+
+/* these "read token" functions return 0 if the token was complete or
+ * EOF was hit or -1 on error.  In contrast to the non-stralloc token
+ * functions, the separator is also put in the stralloc; use
+ * stralloc_chop or stralloc_chomp to get rid of it. */
+
+/* WARNING!  These token reading functions will not clear the stralloc!
+ * They _append_ the token to the contents of the stralloc.  The idea is
+ * that this way these functions can be used on non-blocking sockets;
+ * when you get signalled EAGAIN, just call the functions again when new
+ * data is available. */
+
+/* read token from buffer to stralloc */
+int buffer_get_token_sa(buffer* b,stralloc* sa,char* charset,size_t setlen);
+/* read line from buffer to stralloc */
+int buffer_getline_sa(buffer* b,stralloc* sa);
+
+/* same as buffer_get_token_sa but empty sa first */
+int buffer_get_new_token_sa(buffer* b,stralloc* sa,char* charset,size_t setlen);
+/* same as buffer_getline_sa but empty sa first */
+int buffer_getnewline_sa(buffer* b,stralloc* sa);
+
+typedef int (*sa_predicate)(stralloc* sa);
+
+/* like buffer_get_token_sa but the token ends when your predicate says so */
+int buffer_get_token_sa_pred(buffer* b,stralloc* sa,sa_predicate p);
+/* same, but clear sa first */
+int buffer_get_new_token_sa_pred(buffer* b,stralloc* sa,sa_predicate p);
+
+
+/* make a buffer from a stralloc.
+ * Do not change the stralloc after this! */
+void buffer_fromsa(buffer* b,stralloc* sa);
+
 
 /* These take len bytes from src and write them in encoded form to
  * dest (if dest != NULL), returning the number of bytes written. */

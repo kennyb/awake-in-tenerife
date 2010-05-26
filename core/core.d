@@ -2001,6 +2001,13 @@ error:				cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
 		if(last_request_time != request_time) {
 			last_request_time = request_time;
 			
+			if(dyn_connection.connected - dyn_connection.reading - dyn_connection.writing > 0) {
+				uint d;
+				while((d = io_timeouted()) != -1) {
+					io_close(d);
+				}
+			}
+			
 			//uint collected = dyn_connection.release_connections(request_time - SECONDS_TO_RECONNECT);
 			//debug noticeln("collected ", collected, " connections..");
 			
