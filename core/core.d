@@ -1702,6 +1702,13 @@ int main_loop() {
 	}
 	
 	io_wantread(s);
+	
+	debug {
+		noticeln("accepting connections on ", cast(char)settings.bind_ip[0], ".", cast(char)settings.bind_ip[1], ".", cast(char)settings.bind_ip[2], ".", cast(char)settings.bind_ip[3], ":", cast(int)settings.bind_port, " ...");
+	} else {
+		noticeln("accepting connections...");
+	}
+	
 	// END LISTEN
 	
 	
@@ -2438,11 +2445,6 @@ int main(string[] args) {
 	// listen and serve files
 	//GC.collect();
 	//GC.minimize();
-	debug {
-		noticeln("accepting connections on ", cast(char)settings.bind_ip[0], ".", cast(char)settings.bind_ip[1], ".", cast(char)settings.bind_ip[2], ".", cast(char)settings.bind_ip[3], ":", cast(int)settings.bind_port, " ...");
-	} else {
-		noticeln("accepting connections...");
-	}
 	
 	int ret = main_loop();
 	

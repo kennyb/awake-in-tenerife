@@ -188,7 +188,7 @@ version(unittests) {
 			string t = "   {uid: 11} ";
 			
 			string[string] output;
-			output = parse_options(t);
+			output.parse_options(t);
 			
 			assert("uid" in output);
 			assert(output["uid"] == "11");
