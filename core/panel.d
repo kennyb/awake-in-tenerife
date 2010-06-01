@@ -149,13 +149,13 @@ class PNLByte {
 	}
 }
 
-class TemplatePanel {
+class TemplateFrame {
 	string name;
 	string custom_class;
 	bool hidden;
 	
 	PNL* default_panel;
-	string default_panel_name;
+	string default_panel_str;
 	
 	
 	this(string name, string custom_class = "", bool hidden = false) {
@@ -178,17 +178,17 @@ class TemplatePanel {
 		
 		prt(`">`);
 		
-		string* ptr_request_page = (name in PANELS);
-		PNL* ptr_target_panel;
-		if(ptr_request_page) {
-			ptr_target_panel = (*ptr_request_page in PNL.pnl);
-		} else {
-			ptr_target_panel = default_panel;
+		string* ptr_frame = (name in PANELS);
+		PNL* ptr_panel;
+		
+		ptr_panel = ptr_frame ? *ptr_frame in PNL.pnl : default_panel; 
+		if(!ptr_panel) {
+			default_panel = ptr_panel = default_panel_str in PNL.pnl;
 		}
 		
-		if(ptr_target_panel) {
-			if(uid || ptr_target_panel.is_public) {
-				ptr_target_panel.render();
+		if(ptr_panel) {
+			if(uid || ptr_panel.is_public) {
+				ptr_panel.render();
 			} else {
 				if(PNL.pnl_auth) {
 					PNL.pnl_auth.render();
@@ -197,7 +197,13 @@ class TemplatePanel {
 				}
 			}
 		} else {
-			debug errorln("You are requesting to load '", *ptr_request_page, "' into panel '", name, "' but that's not a valid option");
+			debug {
+				errorln("You are requesting to load panel '", *ptr_frame, "' into frame '", name, "' but that's not a valid option");
+				errorln("available:");
+				foreach(name, p; PNL.pnl) {
+					errorln("   '", name, "'");
+				}
+			}
 		}
 		
 		prt("</div>");
@@ -234,8 +240,8 @@ final class PNL {
 	static string[16] str_global_vars;
 	
 	private static PNLByte[] PB;
-	private static TemplatePanel[] PANELS;
-	private static TemplatePanel*[] panels;
+	private static TemplateFrame[] PANELS;
+	private static TemplateFrame*[] panels;
 	private static string[string][string] lang;
 	private static string[] idiomas;
 	private static string default_idioma = "en";
@@ -333,9 +339,9 @@ final class PNL {
 		scan_dir(FilePath(panels_dir), &load_panel, 100);
 		
 		foreach(inout PNL p; PNL.pnl) {
-			foreach(TemplatePanel* tp; p.panels) {
-				if(!tp.default_panel && tp.default_panel_name.length) {
-					tp.default_panel = (tp.default_panel_name in PNL.pnl);
+			foreach(TemplateFrame* tp; p.panels) {
+				if(!tp.default_panel && tp.default_panel_str.length) {
+					tp.default_panel = (tp.default_panel_str in PNL.pnl);
 				}
 			}
 		}
@@ -2075,7 +2081,13 @@ final class PNL {
 								inlineError("variable '" ~ inside ~ "' could not be found\nYou probably forgot to define it with the variable template");
 							}
 						}
-					} else if(cmd == "panel") {
+					} else if(cmd == "frame" || cmd == "panel") {
+						debug {
+							if(cmd == "panel") {
+								inlineError("the directive 'panel' has been deprecated"); 
+							}
+						}
+						
 						if(inside.length) {
 							string[string] options;
 							
@@ -2085,15 +2097,15 @@ final class PNL {
 							if(val) {
 								string pnl_name = *val;
 								
-								PANELS ~= new TemplatePanel(pnl_name);
-								TemplatePanel* tp = &PANELS[$ - 1];
+								PANELS ~= new TemplateFrame(pnl_name);
+								TemplateFrame* tp = &PANELS[$ - 1];
 								panels ~= tp;
 								
 								val = "default" in options;
 								bool still_need_default = true;
 								if(val) {
 									string s_def = *val;
-									tp.default_panel_name = s_def;
+									tp.default_panel_str = s_def;
 									PNL* def = (s_def in PNL.pnl);
 									if(def) {
 										tp.default_panel = def;
