@@ -424,11 +424,15 @@ final class PNL {
 			char[] new_text = " ";
 			new_text.length = len;
 			
-			//TODO!!!! - add here a search and replace for \r\n newlines and convert them to \n
-			// then, convert all \r to \n
-			// and display an error
+			auto first_line = find_c(t, '\n');
+			auto first_cr = find_c(t, '\r');
+			noticeln("ln: ", first_line, " cr: ", first_cr);
+			if(first_cr != -1 && first_cr < first_line) {
+				t = t[0 .. first_cr] ~ "\n<error>please do not save in file formats other than linux file format (newlines \\n)</error>" ~ replace_cc(t[first_line .. $], '\r', '\n');
+				debug errorln("NEWLINE ERROR '", t[0 .. 200]);
+				first_line = find_c(t, '\n');
+			}
 			
-			auto first_line = find_c(t, '\n', i);
 			if(first_line != -1 && first_line > 20) { //<%interface ...%> is the minimum
 				if(t[0] == '<' && (t[1] == '?' || t[1] == '%') && t[first_line-1] == '>' && (t[first_line-2] == '?' || t[first_line-2] == '%')) {
 					typeof(len) end_cmd = 1;
@@ -2084,7 +2088,7 @@ final class PNL {
 					} else if(cmd == "frame" || cmd == "panel") {
 						debug {
 							if(cmd == "panel") {
-								inlineError("the directive 'panel' has been deprecated"); 
+								inlineError("the directive 'panel' has been deprecated");
 							}
 						}
 						
