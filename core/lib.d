@@ -524,7 +524,7 @@ uint from_hex(char c) {
 }
 
 // text functions, re-implemented to be binary safe and not throw exceptions
-size_t find_c(string str, char f, size_t offset = 0) {
+ptrdiff_t find_c(string str, char f, size_t offset = 0) {
 	auto len = str.length;
 	if(offset >= 0 && offset < len) {
 		for(size_t i = offset; i < len; i++) {
@@ -537,7 +537,7 @@ size_t find_c(string str, char f, size_t offset = 0) {
 	return -1;
 }
 
-size_t find_s(string str, string f, int offset = 0) {
+ptrdiff_t find_s(string str, string f, int offset = 0) {
 	auto len = str.length;
 	auto flen = f.length;
 	
@@ -557,7 +557,7 @@ restart:
 	return -1;
 }
 
-size_t findr_c(string str, char f, int offset = 0xb00bb00b) {
+ptrdiff_t findr_c(string str, char f, int offset = 0xb00bb00b) {
 	auto len = cast(int) str.length - 1;
 	if(offset == 0xb00bb00b || offset > len) {
 		offset = len;
@@ -574,7 +574,7 @@ size_t findr_c(string str, char f, int offset = 0xb00bb00b) {
 	return -1;
 }
 
-size_t findr_s(string str, string f, int offset = 0xb00bb00b) {
+ptrdiff_t findr_s(string str, string f, int offset = 0xb00bb00b) {
 	auto len = str.length - 1;
 	auto flen = f.length;
 	if(offset == 0xb00bb00b || offset > len) {
@@ -789,7 +789,7 @@ string strip_search(string str) {
 	return output;
 }
 
-size_t find_noquote(string s, char needle, int offset = 0) {
+ptrdiff_t find_noquote(string s, char needle, int offset = 0) {
 	char prev_c = offset != 0 ? s[offset-1] : 0;
 	char quote = 0;
 	auto end = s.length;
@@ -823,7 +823,7 @@ size_t find_noquote(string s, char needle, int offset = 0) {
 	return -1;
 }
 
-size_t find_noquote(string s, string needle, int offset = 0) {
+ptrdiff_t find_noquote(string s, string needle, int offset = 0) {
 	char prev_c = offset != 0 ? s[offset-1] : 0;
 	char quote = 0;
 	auto len = needle.length;
@@ -906,10 +906,10 @@ string ctfe_enc_int(size_t num) {
 }
 
 
-string rand_str(int size) in {
+string rand_str(int size, size_t seed = 0) in {
 	assert(size <= 60);
 } body {
-	size_t num = rand();
+	size_t num = rand() + seed;
 	char[60] result;
 	
 	result[0] = tostring[num & 0x3f];
@@ -917,7 +917,7 @@ string rand_str(int size) in {
 	while(i < size) {
 		num >>= 6;
 		if(num < 0x3f) {
-			num = rand();
+			num += rand();
 		}
 		
 		result[i++] = tostring[num & 0x3f];
