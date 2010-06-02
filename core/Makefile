@@ -48,11 +48,30 @@ ifeq ($(DATATEST),true)
 endif
 
 ifeq ($(DMD),ldc)
-	DFLAGS+=-singleobj -output-bc -relocation-model=pic -I../common/tango-svn/tango/core/rt/compiler/ldc/ -I../common/tango-svn/ -enable-eh -enable-correct-eh-support -realign-stack -code-model=large
+	DFLAGS+=\
+		-singleobj \
+		-output-bc \
+		-relocation-model=pic \
+		-I../common/tango-svn/tango/core/rt/compiler/ldc/ \
+		-I../common/tango-svn/ \
+		-enable-eh \
+		-enable-correct-eh-support \
+		-realign-stack
+
 	#-disable-boundscheck
 	LDFLAGS+=-native -stats
 	#CFLAGS=
-	TANGO_FLAGS+= -d-version=release -O5 -enable-eh -enable-correct-eh-support -realign-stack -g -relocation-model=pic -output-bc
+	TANGO_FLAGS+= \
+		-output-bc \
+		-relocation-model=pic \
+		-d-version=release \
+		-g \
+		-O5 \
+		-enable-eh \
+		-enable-correct-eh-support \
+		-realign-stack
+		
+
 	ifeq ($(M32),true)
 		EXTRA+= -m32
 	else
@@ -132,7 +151,7 @@ else
 	# -Wall -Wextra -Wno-unreachable-code
 #	CFLAGS+=-g -fno-bounds-check
 	CFLAGS+=-g
-	DFLAGS+= -d -g $(EXTRA)
+	DFLAGS+= -g $(EXTRA)
 	ifeq ($(DMD),ldc)
 		#-annotate -op -D
 		DFLAGS+= -O0 -v-cg -noverify
@@ -159,7 +178,7 @@ FILES=core.d \
 FILES+=templates/*.d
 
 #lame hack for movideal! REMOVE ME
-FILES+=data/movideal/default_objs.d \
+FILES+=../../$(SITE)/src/*.d \
 	addon/http_request.d \
 	../common/kxml/xml.d \
 	obj/common.resolve.bc
