@@ -217,6 +217,9 @@ clean:
 mongoc:
 	cd ../common/mongo-c-driver && scons --c99 --pic
 	
+libowfat:
+	cd ../common/libowfat && make && mv libowfat.a save-me && make clean && mv save-me libowfat.a
+	
 tango:
 	svn co -r $(TANGO_REVISION) http://svn.dsource.org/projects/tango/trunk ../common/tango-svn && \
 	cd ../common/tango-svn/ && \
@@ -225,7 +228,7 @@ tango:
 	ar -r libtango.a *.o *.bc && \
 	rm *.o *.bc
 
-libs: mongoc tango
+libs: tango libowfat mongoc
 	#cd ../common/tango/lib/ && ./build-gdc.sh
 	#cd ../common/tango/lib/ && ./build-tango.sh --verbose gdc
 	#cd ../common/ && \
