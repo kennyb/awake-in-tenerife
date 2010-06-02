@@ -67,15 +67,12 @@ void mongo_message_send(mongo_connection * conn, mongo_message* mm){
     bson_little_endian32(&head.op, &mm->head.op);
     
     //MONGO_TRY{
-	    //printf("sending message %p\n", mm);
         looping_write(conn, &head, sizeof(head));
         looping_write(conn, &mm->data, mm->head.len - sizeof(head));
-	    //printf("sending message %p\n", mm);
     //}MONGO_CATCH{
     //    free(mm);
     //    MONGO_RETHROW();
     //}
-    //printf("*******");
     free(mm);
 }
 
@@ -321,8 +318,8 @@ mongo_reply * mongo_read_response( mongo_connection * conn ){
 }
 
 mongo_cursor* mongo_find(mongo_connection* conn, const char* ns, bson* query, bson* fields, int nToReturn, int nToSkip, int options){
-    printf("mongo_find().. "); bson_print(query);
-	int sl;
+    //printf("mongo_find().. "); bson_print(query);
+    int sl;
     mongo_cursor * cursor;
     char * data;
     mongo_message * mm = mongo_message_create( 16 + /* header */

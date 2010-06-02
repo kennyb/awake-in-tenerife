@@ -97,10 +97,10 @@ class HttpRequest {
 			auto d = io_fd(s);
 			
 			if(d) {
-				tai6464 t;
-				taia_now(&t);
-				taia_addsec(&t, &t, 1);
-				io_timeout(d, t);
+				//tai6464 t;
+				//taia_now(&t);
+				//taia_addsec(&t, &t, 1);
+				//io_timeout(d, t);
 				
 				for(uint i = 0; i < ips.length; i++) {
 					auto ret = socket_connect4(s, cast(char*)ips[i].ptr, port);
@@ -127,6 +127,8 @@ class HttpRequest {
 								}
 							}
 						}
+					} else {
+						errorln("unable to connect to ", host);
 					}
 				}
 			}

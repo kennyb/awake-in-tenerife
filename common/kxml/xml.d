@@ -39,7 +39,10 @@ version(Tango) {
 	import tango.text.Ascii:icmp=icompare,cmp=compare;
 	import tango.text.Regex;
 	import tango.stdc.stdio:printf;
-	alias char[] string;
+	static if(!is(string == char[])) {
+		alias char[] string;
+	}
+	
 	string regrep(string input,string pattern,string delegate(string) translator) {
 		string tmpdel(RegExpT!(char) m) {
 			return translator(m.match(0));

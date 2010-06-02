@@ -1,6 +1,8 @@
 module lib;
 
-alias char[] string;
+static if(!is(string == char[])) {
+	alias char[] string;
+}
 
 import tango.stdc.stdio;
 import tango.stdc.stdlib;
