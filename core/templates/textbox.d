@@ -114,7 +114,7 @@ import shared;
 }*/
 
 class TemplateTArea : TemplateTBox {
-	static typeof(this)[] instances;
+	private static typeof(this)[] instances;
 	static this() {
 		PNL.registerTemplate("textarea", &this.create);
 	}
@@ -184,7 +184,7 @@ class TemplateTArea : TemplateTBox {
 }
 
 class TemplateTBox {
-	static typeof(this)[] instances;
+	private static typeof(this)[] instances;
 	static this() {
 		PNL.registerTemplate("textbox", &this.create);
 		PNL.registerTemplate("autofill", &this.create);
@@ -436,7 +436,7 @@ class TemplateTBox {
 		value_end_loc = value_loc + default_text.length;
 	}
 	
-	void render() {
+	private void render() {
 		if(ptr_value && (*ptr_value).length) {
 			prt(prerender[0 .. value_loc]);
 			prt(*ptr_value);

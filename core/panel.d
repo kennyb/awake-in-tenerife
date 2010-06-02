@@ -181,7 +181,12 @@ class TemplateFrame {
 		string* ptr_frame = (name in PANELS);
 		PNL* ptr_panel;
 		
-		ptr_panel = ptr_frame ? *ptr_frame in PNL.pnl : default_panel; 
+		if(ptr_frame) {
+			ptr_panel = *ptr_frame in PNL.pnl;
+		} else {
+			ptr_panel = default_panel;
+		}
+		
 		if(!ptr_panel) {
 			default_panel = ptr_panel = default_panel_str in PNL.pnl;
 		}
@@ -198,7 +203,7 @@ class TemplateFrame {
 			}
 		} else {
 			debug {
-				errorln("You are requesting to load panel '", *ptr_frame, "' into frame '", name, "' but that's not a valid option");
+				errorln("You are requesting to load panel '", ptr_frame ? *ptr_frame : default_panel_str, "' into frame '", name, "' but that's not a valid option");
 				errorln("available:");
 				foreach(name, p; PNL.pnl) {
 					errorln("   '", name, "'");
