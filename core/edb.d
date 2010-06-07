@@ -453,8 +453,31 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	this(string str_query, int page_offset = 0, int page_size = 1) {
+		bson b;
 		this();
-		//string[string] query;
+		
+		this.page_size = page_size;
+		this.page_offset = page_offset;
+		current = -1;
+		column = -1;
+		
+		saved_query.parse_options(str_query, true);
+		make_query_local(b, saved_query);
+		
+		mongo_cursor_destroy(cursor);
+		cursor = _query(&b, this.page_offset, this.page_size);
+		
+		if(cursor != null) {
+			loop();
+			if(cursor != null) {
+				skip_loop = true;
+			}
+		}
+	}
+	
+	/*
+	this(string str_query, int page_offset = 0, int page_size = 1) {
+		this();
 		saved_query.parse_options(str_query, true);
 		if(load(saved_query, page_offset, page_size)) {
 			loop();
@@ -465,6 +488,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			
 		}
 	}
+	*/
 	
 	this(bson* bson_query, int page_offset = 0, int page_size = 1) {
 		_query(bson_query, page_offset, page_size);
@@ -536,9 +560,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	int loop() {
 		if(skip_loop == true) {
+			//noticeln("L: skip_loop = false");
 			skip_loop = false;
 			// do nothing!
 		} else if(++current != page_size && cursor && mongo_cursor_next(cursor)) {
+			//noticeln("L: next");
 			// increment the helper variables
 			if(++column >= width) {
 				column = 0;
@@ -619,6 +645,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			*/
 			
 		} else {
+			//noticeln("L: done (", current, " ", page_size, " ", cursor != null);
 			mongo_cursor_destroy(cursor);
 			cursor = null;
 			_id = 0;
@@ -1014,6 +1041,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					case "$limit":
 						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
 						page_size = toUint(val);
+						noticeln("page_size: ", page_size);
 						break;
 						
 					case "$column_width":
@@ -1960,7 +1988,7 @@ version(unittests) {
 		
 		void looping() {
 			// find only one (page size)
-			UnittestPhotoTag ptags = new UnittestPhotoTag("", 0, 1);
+			auto ptags = new UnittestPhotoTag("", 0, 1);
 			assert(ptags.loop());
 			assert(ptags._id == 1);
 			assert(ptags.uid == 11);
@@ -2005,6 +2033,27 @@ version(unittests) {
 			assert(ptags._id == 2);
 			assert(ptags.uid == 1058);
 			assert(!ptags.loop());
+			
+			
+			ptags = new UnittestPhotoTag("$orderby: {_id: -1}, $page_size: 2");
+			auto ptags2 = new UnittestPhotoTag("$orderby: {_id: -1}, uid: 11, $page_size: 2");
+			assert(ptags.loop());
+			assert(ptags._id == 3);
+			assert(ptags.uid == 11);
+			assert(ptags2.loop());
+			assert(ptags2._id == 3);
+			assert(ptags2.uid == 11);
+			
+			assert(ptags.loop());
+			assert(ptags._id == 2);
+			assert(ptags.uid == 1058);
+			assert(ptags2.loop());
+			assert(ptags2._id == 1);
+			assert(ptags2.uid == 11);
+			
+			assert(!ptags.loop());
+			assert(!ptags2.loop());
+			
 			
 			/*
 			assert(PhotoTags.list.length == 1);
