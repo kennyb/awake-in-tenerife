@@ -525,6 +525,63 @@ uint from_hex(char c) {
 			c - 'a' + 10;
 }
 
+string clearBr(string str) {
+	string output;
+	auto last_offset = 0;
+	
+	auto len = str.length;
+	output.length = len;
+	output.length = 0;
+	
+	len -= 4; // this is to prevent buffer overruns
+	
+	for(size_t i = 0; i < len; i++) {
+		char c = str[i];
+		if(c == '<') {
+			char c2 = str[i+1];
+			if(c2 == 'b' || c2 == 'B') {
+				char c3 = str[i+2];
+				if(c3 == 'r' || c3 == 'R') {
+					char c4 = str[i+3];
+					if(c4 == '>') {
+						output ~= str[last_offset .. i] ~ '\n';
+						i += 4;
+						last_offset = i;
+					} else if(i+1 < len) {
+						char c5 = str[i+4];
+						if(c4 == '/' && c5 == '>') {
+							output ~= str[last_offset .. i] ~ '\n';
+							i += 5;
+							last_offset = i;
+						} else if(i+2 < len) {
+							char c6 = str[i+5];
+							if(c4 == ' ' && c5 == '/' && c6 == '>') {
+								output ~= str[last_offset .. i] ~ '\n';
+								i += 6;
+								last_offset = i;
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	output ~= str[last_offset .. $];
+	
+	return output;
+}
+
+unittest {
+	assert(clearBr("la<br>la") == "la\nla");
+	assert(clearBr("la<br/>la") == "la\nla");
+	assert(clearBr("la<br />la") == "la\nla");
+	assert(clearBr("la<BR>la") == "la\nla");
+	assert(clearBr("la<BR/>la") == "la\nla");
+	assert(clearBr("la<BR />la") == "la\nla");
+}
+
+
 // text functions, re-implemented to be binary safe and not throw exceptions
 ptrdiff_t find_c(string str, char f, size_t offset = 0) {
 	auto len = str.length;
