@@ -353,6 +353,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			num = c.get("n");
 		}
 		
+		delete c;
 		return num;
 	}
 	
@@ -515,7 +516,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	~this() {
 		//TODO!!! - do cleanup!
 		if(cursor) {
-		//	mongo_cursor_destroy(cursor);
+			mongo_cursor_destroy(cursor);
 			cursor = null;
 		}
 	}
@@ -529,6 +530,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		cursor = _query(&b, 0, 1);
 		auto ret = loop();
 		mongo_cursor_destroy(cursor);
+		cursor = null;
 		return this._id;
 	}
 	

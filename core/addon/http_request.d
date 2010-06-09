@@ -38,10 +38,10 @@ class HttpRequest {
 	
 	private static ubyte[4] ip[string][];
 	private string req_header;
-	string output_header;
-	string output;
 	private string host;
 	private ubyte[4][] ips;
+	string output_header;
+	string output;
 	
 	static this() {
 		static char seed[128];
@@ -85,6 +85,7 @@ class HttpRequest {
 	
 	int get(string uri, ushort port = 80) {
 		string request = "GET /";
+		output = null;
 		if(uri.length >= 1) {
 			if(uri[0] == '/') {
 				request ~= uri[1 .. $];
@@ -118,6 +119,7 @@ class HttpRequest {
 								while((ret = read(s, tmp.ptr, 1024)) >= 0) {
 									if(ret == 0) {
 										io_close(s);
+										delete request;
 										return parse();
 									}
 									
@@ -136,6 +138,7 @@ class HttpRequest {
 			io_close(s);
 		}
 		
+		delete request;
 		return 0;
 	}
 	
