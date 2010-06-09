@@ -528,48 +528,55 @@ uint from_hex(char c) {
 string clearBr(string str) {
 	string output;
 	auto last_offset = 0;
-	
 	auto len = str.length;
-	output.length = len;
-	output.length = 0;
 	
-	len -= 4; // this is to prevent buffer overruns
-	
-	for(size_t i = 0; i < len; i++) {
-		char c = str[i];
-		if(c == '<') {
-			char c2 = str[i+1];
-			if(c2 == 'b' || c2 == 'B') {
-				char c3 = str[i+2];
-				if(c3 == 'r' || c3 == 'R') {
-					char c4 = str[i+3];
-					if(c4 == '>') {
-						output ~= str[last_offset .. i] ~ '\n';
-						i += 4;
-						last_offset = i;
-					} else if(i+1 < len) {
-						char c5 = str[i+4];
-						if(c4 == '/' && c5 == '>') {
+	if(len >= 4) {
+		output.length = len;
+		output.length = 0;
+		
+		len -= 4; // this is to prevent buffer overruns
+		
+		ptrdiff_t i = 0;
+		while(i < len) {
+			char c = str[i];
+			if(c == '<') {
+				char c2 = str[i+1];
+				if(c2 == 'b' || c2 == 'B') {
+					char c3 = str[i+2];
+					if(c3 == 'r' || c3 == 'R') {
+						char c4 = str[i+3];
+						if(c4 == '>') {
 							output ~= str[last_offset .. i] ~ '\n';
-							i += 5;
-							last_offset = i;
-						} else if(i+2 < len) {
-							char c6 = str[i+5];
-							if(c4 == ' ' && c5 == '/' && c6 == '>') {
+							i += 3;
+							last_offset = i +1;
+						} else if(i+1 < len) {
+							char c5 = str[i+4];
+							if(c4 == '/' && c5 == '>') {
 								output ~= str[last_offset .. i] ~ '\n';
-								i += 6;
-								last_offset = i;
+								i += 4;
+								last_offset = i + 1;
+							} else if(i+2 < len) {
+								char c6 = str[i+5];
+								if(c4 == ' ' && c5 == '/' && c6 == '>') {
+									output ~= str[last_offset .. i] ~ '\n';
+									i += 5;
+									last_offset = i + 1;
+								}
 							}
 						}
 					}
 				}
 			}
+			
+			i++;
 		}
+		
+		output ~= str[last_offset .. $];
+		
+		return output;
 	}
 	
-	output ~= str[last_offset .. $];
-	
-	return output;
+	return str;
 }
 
 unittest {

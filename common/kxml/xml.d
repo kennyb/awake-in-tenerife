@@ -115,7 +115,8 @@ XmlNode readDocument(string src,bool preserveWS=false)
 	try {
 		root.addChildren(src,preserveWS);
 	} catch (XmlError e) {
-		logline("Caught exception from input string:\n"~pointcpy~"\n");
+		//logline("Caught exception from input string:\n"~pointcpy~"\n");
+		logline("** exception " ~ e.file /*~ "(" ~ Integer.toString(e.line)*/ ~ "0) " ~ e.msg);
 		throw e;
 	}
 	return root;
@@ -661,6 +662,7 @@ class XmlNode
 
 	// this code is now officially prettified
 	private void parseAttribute (XmlNode xml,ref string attrstr,string term = null) {
+		//logline(attrstr);
 		string ripName(ref string input) {
 			int i;
 			for(i=0;i < input.length && !isspace(input[i]) && input[i] != '=';i++){}
@@ -1173,8 +1175,9 @@ class XmlDocument:XmlNode {
 		try {
 			addChildren(constring,preserveWS);
 		} catch (XmlError e) {
-			logline("Caught exception from input string:\n"~pointcpy~"\n");
-			throw e;
+			//logline("Caught exception from input string:\n"~pointcpy~"\n");
+			logline("** exception " ~ e.file /*~ "(" ~ Integer.toString(e.line)*/ ~ "0) " ~ e.msg);
+			//throw e;
 		}
 	}
 
