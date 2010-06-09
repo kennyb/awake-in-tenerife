@@ -958,6 +958,7 @@ final class PNL {
 		registerInt("uid", &.uid);
 		registerInt("zid", &.zid);
 		registerInt("xid", &.xid);
+		registerInt("request_time", &.request_time);
 		registerUint("zid.set", &.zid_set);
 		registerUint("xid.set", &.xid_set);
 		// TODO!!! - make this much more extensive in a template which parses the header

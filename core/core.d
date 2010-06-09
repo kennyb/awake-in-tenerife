@@ -1844,7 +1844,20 @@ int main_loop() {
 					if(cur_conn.header_len > 0) {
 						cur_conn.end_reading = cur_conn.begin_processing = microtime();
 						debug noticeln("doc: '", cur_conn.doc, "' ", cur_conn.socket, " qs: '", cur_conn.orig_qs, "'");
-						if(cur_conn.orig_qs.length > 0 || cur_conn.doc[$-1] == '/') {
+						
+						char last_char = cur_conn.doc[$-1];
+						string doc = cur_conn.doc[1 .. $];
+						void** file_ptr;
+						
+						if(last_char != '/') {
+							if(cur_conn.gzip) {
+								file_ptr = doc in FILES_GZIP;
+							} else {
+								file_ptr = doc in FILES;
+							}
+						}
+						
+						if(last_char == '/' || (cur_conn.orig_qs.length > 0 && !file_ptr)) {
 							if(cur_conn.content_len && cur_conn.content_len + cur_conn.header_len != cur_conn.input.length) {
 								// this prevents trying to render the page, if there is a POST, and it's not fully downloaded yet
 								debug noticeln("breaking ", cur_conn.content_len + cur_conn.header_len, " ", cur_conn.input.length, "\n\n");
@@ -1877,14 +1890,7 @@ int main_loop() {
 								io_wantwrite(cur_conn.socket);
 							}
 						} else {
-							string doc = cur_conn.doc[1 .. $];
 							
-							void** file_ptr;
-							if(cur_conn.gzip) {
-								file_ptr = doc in FILES_GZIP;
-							} else {
-								file_ptr = doc in FILES;
-							}
 							
 							if(file_ptr) {
 								cur_conn.output_file = ((cast(char*)(*file_ptr)) +4);
