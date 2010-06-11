@@ -157,7 +157,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				}
 			}
 			
-			pnl.registerLong("` ~ name ~ `._id", &obj._id);
 			pnl.registerUint("` ~ name ~ `.current", &obj.current);
 			pnl.registerUint("` ~ name ~ `.column", &obj.column);
 			pnl.registerUint("` ~ name ~ `.count", &obj.num_results);
@@ -226,7 +225,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				if(ptr_id) {
 					id = *ptr_id;
 				}
-				
 				
 				if(id) {
 					load(id);
@@ -528,6 +526,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		bs.exportBSON(b);
 		
 		cursor = _query(&b, 0, 1);
+		
+		skip_loop = false;
 		auto ret = loop();
 		mongo_cursor_destroy(cursor);
 		cursor = null;
@@ -537,27 +537,19 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	private int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 1) {
 		this.page_size = page_size;
 		this.page_offset = page_offset;
-		
-		bson b;
-		make_query_local(b, parsed_query);
-		query_pnl(&b, this.page_offset, this.page_size);
-		bson_destroy(&b);
-		
-		return cursor != null;
-	}
-	
-	private int query_pnl(bson* bson_query, int page_offset, int page_size) {
-		this.page_size = page_size;
-		this.page_offset = page_offset;
 		current = -1;
 		column = -1;
 		
+		bson b;
+		make_query_local(b, parsed_query);
+		
 		mongo_cursor_destroy(cursor);
-		cursor = _query(bson_query, page_offset, page_size);
+		cursor = _query(&b, this.page_offset, this.page_size);
 		loop();
-		if(cursor != null) {
-			skip_loop = true;
-		}
+		skip_loop = cursor != null ? true : false;
+		noticeln("skip_loop: ", skip_loop);
+		
+		bson_destroy(&b);
 		
 		return cursor != null;
 	}
@@ -701,6 +693,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		bson err;
 		bson b;
 		
+		noticeln(obj_name, ".saving(", _id, ")");
 		bool is_new = true;
 		if(_id == 0) {
 			_id = find_id();
@@ -720,7 +713,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			bs.append("_id", _id);
 			bs.exportBSON(cond);
 			
-			mongo_update(conn, ns.ptr, &cond, &b, /*MONGO_UPDATE_UPSERT*/ 0);
+			mongo_update(conn, ns.ptr, &cond, &b, MONGO_UPDATE_UPSERT);
 			
 			version(extra_checks) {
 				if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
