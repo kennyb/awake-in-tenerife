@@ -1872,26 +1872,29 @@ final class PNL {
 							PNLByte* p = newByte();
 							p.action = pnl_action_void_delegate;
 							p.dg = ee;
-						}
-						
-						if(cmd == "loop") {
-							start_new_scope = false;
-							if(inside.length) {
-								int loop_inst = find_loop(inside);
-								if(loop_inst >= 0) {
-									PNLByte* p = newByte();
-									p.action = pnl_action_loop;
-									p.ptr = cast(char*)&obj_loops[inside][loop_inst];
-									
-									loop_return = pb_count-1;
-									
-									i = parse_indent(i);
+							
+							if(cmd == "loop") {
+								start_new_scope = false;
+								if(inside.length) {
+									int loop_inst = find_loop(inside);
+									if(loop_inst >= 0) {
+										p = newByte();
+										p.action = pnl_action_loop;
+										p.ptr = cast(char*)&obj_loops[inside][loop_inst];
+										
+										loop_return = pb_count-1;
+										
+										i = parse_indent(i);
+									}
 								}
 							}
+						} else {
+							inlineError("could not find data object '" ~ inside ~ '"');
 						}
 					} else if(cmd == "endloop") {
-						if(start_new_scope == true)
+						if(start_new_scope == true) {
 							goto return_text_end;
+						}
 						
 						start_new_scope = true;
 						if(loop_return >= 0) {
