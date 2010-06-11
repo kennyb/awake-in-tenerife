@@ -1715,6 +1715,14 @@ int main_loop() {
 	// main loop
 	char[4096] req_data;
 	while(true) {
+		// process tasks
+		ptrdiff_t update_offset = periodic_updates.length-1;
+		if(update_offset >= 0) {
+			do {
+				periodic_updates[update_offset]();
+			} while(update_offset--);
+		}
+		
 		// wait up to one second and loop again to do garbage collection / maintenance
 		io_waituntil2(1000);
 	

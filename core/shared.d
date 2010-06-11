@@ -25,6 +25,9 @@ int[string][string] instance_count;
 TemplateObject[string] static_objects;
 bool[string][string] static_object_loaded;
 
+// periodic update functions
+void function()[] periodic_updates;
+
 string[string] POST;
 string[string] FUNC;
 string[string] COOKIE;
