@@ -2463,10 +2463,6 @@ final class PNL {
 						}
 					}
 				break;
-				case pnl_action_void_delegate:
-					version(renderingbytecode) noticeln(cur, ": (load)");
-					p.dg();
-				break;
 				
 				// JE
 				case pnl_action_je | pnl_action_uint_mask:
@@ -2642,15 +2638,23 @@ final class PNL {
 						i = p.new_location;
 					}
 				break;
+				
+				case pnl_action_void_delegate:
 				case pnl_action_template:
-					version(renderingbytecode) noticeln(cur, ": (template)");
-					p.dg();
-				break;
 				case pnl_action_panel:
-					version(renderingbytecode) noticeln(cur, ": (panel)");
-					p.dg();
+					version(renderingbytecode) {
+						if(p.action == pnl_action_void_delegate) {
+							noticeln(cur, ": (load)");
+						} else if(p.action == pnl_action_template) {
+							noticeln(cur, ": (template)");
+						} else if(p.action == pnl_action_panel) {
+							noticeln(cur, ": (panel)");
+						}
+					}
 					
+					p.dg();
 				break;
+				
 				case pnl_action_final_replace:
 					version(renderingbytecode) noticeln(cur, ": (final replace) ", p.value);
 					final_replace f;
