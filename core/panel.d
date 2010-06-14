@@ -973,6 +973,8 @@ final class PNL {
 		registerString("js", &.Core.js_out);
 		registerUint("is_me", &.is_me);
 		
+		//TODO!!!! - register all global variables here, or make a helper function to always check the global array first.
+		
 		parse_indent(0);
 	}
 	
@@ -2185,29 +2187,54 @@ final class PNL {
 						p.action = var_type[v_inst][inside];
 						if(p.action == pnl_action_var_str) {
 							p.ptr_str = var_str[v_inst][inside];
+							val = "truncate" in opts;
+							if(val) {
+								p.truncate = toUint(*val);
+							}
+							
+							val = "transform" in opts;
+							if(val) {
+								p.truncate = ~p.truncate;
+							}
+							
+							val = "parse" in opts;
+							if(val) {
+								void function(string input)* ptr_callback = *val in text_transforms;
+								if(ptr_callback) {
+									p.callback = *ptr_callback;
+								} else {
+									inlineError("could not find requested text parser: " ~ *val);
+								}
+							}
+							
 						} else {
 							p.ptr = var_ptr[v_inst][inside];
-						}
-						
-						val = "truncate" in opts;
-						if(val) {
-							p.truncate = toUint(*val);
-						}
-						
-						val = "transform" in opts;
-						if(val) {
-							p.truncate = ~p.truncate;
-						}
-						
-						val = "parse" in opts;
-						if(val) {
-							void function(string input)* ptr_callback = *val in text_transforms;
-							if(ptr_callback) {
-								p.callback = *ptr_callback;
-							} else {
-								inlineError("could not find requested text parser: " ~ *val);
+							
+							if(p.action == pnl_action_var_float) {
+								val = "truncate" in opts;
+								if(val) {
+									string truncate = *val;
+									auto point = find_c(truncate, '.');
+									auto comma = find_c(truncate, ',');
+									if(point == -1 && comma != -1) {
+										point = comma;
+									}
+									
+									if(point != -1) {
+										if(point < truncate.length) {
+											p.truncate = toUint(truncate[0 .. point]) + (toUint(truncate[point+1 .. $]) << 8);
+											if(comma != -1) {
+												p.truncate = ~p.truncate;
+											}
+										} else {
+											inlineError("floating point truncate format should be in the format of '#[,.]#' ex. '2,3' -> xx,xxx");
+										}
+									}
+								}
 							}
 						}
+						
+						
 					} else {
 						removeByte();
 						inlineError("variable '" ~ inside ~ "' is not registered");
@@ -2437,34 +2464,112 @@ final class PNL {
 					version(renderingbytecode) noticeln(cur, ": prt(str) '", *p.ptr_str, "'");
 					string output = *p.ptr_str;
 					if(output) {
-						bool transform = (p.truncate < 0 ? false : true);
-						int truncate = (p.truncate < 0 ? ~p.truncate : p.truncate);
+						bool transform = p.truncate < 0 ? false : true;
+						int truncate = p.truncate < 0 ? ~p.truncate : p.truncate;
 						
 						if(p.callback) {
 							p.callback(output);
-						} else {
-							if(truncate > 0) {
-								auto str_len = output.length;
-								if(str_len > truncate) {
-									if(transform) {
-										prt_html(output[0 .. truncate]);
-									} else {
-										prt(output[0 .. truncate]);
-									}
-									
-									prt("...");
-									break;
+						}
+						
+						if(truncate > 0) {
+							auto str_len = output.length;
+							if(str_len > truncate) {
+								if(transform) {
+									prt_html(output[0 .. truncate]);
+								} else {
+									prt(output[0 .. truncate]);
 								}
+								
+								prt("...");
+								break;
 							}
-							
-							if(transform) {
-								prt_html(output);
-							} else {
-								prt(output);
-							}
+						}
+						
+						if(transform) {
+							prt_html(output);
+						} else {
+							prt(output);
 						}
 					}
 				break;
+				case pnl_action_var_float:
+					version(renderingbytecode) noticeln(cur, ": (float) '", *cast(float*)p.ptr, "'");
+					string f = Float.toString(*cast(float*)p.ptr);
+					if(p.truncate) {
+						auto point = f.find_c('.');
+						if(point != -1) {
+							bool is_comma = p.truncate < 0;
+							int truncate = (p.truncate < 0 ? ~p.truncate : p.truncate);
+							auto truncate_high = truncate & 0xff;
+							auto truncate_low = (truncate >> 8) & 0xff;
+							
+							//noticeln("length: ", f.length);
+							//noticeln("high: ", truncate_high);
+							//noticeln("low: ", truncate_low);
+							
+							string formatted = "0";
+							if(truncate_high) {
+								size_t high_start = 0;
+								if(truncate_high < point) {
+									high_start = point - truncate_high;
+								}
+								
+								//noticeln("high_start: ", high_start);
+								//noticeln("high_end: ", point);
+								
+								formatted = f[high_start .. point];
+							}
+							
+							if(truncate_low) {
+								size_t low_end = point + 1 + truncate_low;
+								if(low_end > f.length) {
+									low_end = f.length;
+								}
+								
+								//noticeln("low_start: ", point+1);
+								//noticeln("low_end: ", low_end);
+								
+								formatted ~= (is_comma ? ',' : '.') ~ f[point+1 .. low_end];
+							}
+							
+							f = formatted;
+						}
+						
+					}
+					
+					prt(f);
+				break;
+			
+				case pnl_action_void_delegate:
+				case pnl_action_template:
+				case pnl_action_panel:
+					version(renderingbytecode) {
+						if(p.action == pnl_action_void_delegate) {
+							noticeln(cur, ": (load)");
+						} else if(p.action == pnl_action_template) {
+							noticeln(cur, ": (template)");
+						} else if(p.action == pnl_action_panel) {
+							noticeln(cur, ": (panel)");
+						}
+					}
+					
+					p.dg();
+				break;
+				case pnl_action_jmp:
+					version(renderingbytecode) noticeln(cur, ": (jmp) -> ", p.new_location);
+					i = p.new_location;
+				break;
+				case pnl_action_loop:
+					version(renderingbytecode) noticeln(cur, ": (loop) -> ", p.new_location);
+					
+					// don't worry, it's not as crazy as it looks... it just dereferences the pointer to the delegate
+					int delegate() func = cast(int delegate())*cast(int delegate()*)p.ptr;
+					// then calls it.
+					if(func() == 0) {
+						i = p.new_location;
+					}
+				break;
+				
 				
 				// JE
 				case pnl_action_je | pnl_action_uint_mask:
@@ -2624,39 +2729,6 @@ final class PNL {
 					}
 				break;
 				
-				
-				
-				case pnl_action_jmp:
-					version(renderingbytecode) noticeln(cur, ": (jmp) -> ", p.new_location);
-					i = p.new_location;
-				break;
-				case pnl_action_loop:
-					version(renderingbytecode) noticeln(cur, ": (loop) -> ", p.new_location);
-					
-					// don't worry, it's not as crazy as it looks... it just dereferences the pointer to the delegate
-					int delegate() func = cast(int delegate())*cast(int delegate()*)p.ptr;
-					// then calls it.
-					if(func() == 0) {
-						i = p.new_location;
-					}
-				break;
-				
-				case pnl_action_void_delegate:
-				case pnl_action_template:
-				case pnl_action_panel:
-					version(renderingbytecode) {
-						if(p.action == pnl_action_void_delegate) {
-							noticeln(cur, ": (load)");
-						} else if(p.action == pnl_action_template) {
-							noticeln(cur, ": (template)");
-						} else if(p.action == pnl_action_panel) {
-							noticeln(cur, ": (panel)");
-						}
-					}
-					
-					p.dg();
-				break;
-				
 				case pnl_action_final_replace:
 					version(renderingbytecode) noticeln(cur, ": (final replace) ", p.value);
 					final_replace f;
@@ -2665,6 +2737,7 @@ final class PNL {
 					final_replacements ~= f;
 					
 				break;
+				
 				case pnl_action_set_int:
 					version(renderingbytecode) noticeln(cur, ": (setting int) '", p.value, "'");
 					*cast(int*)(*cast(int*)p.ptr) = cast(int)(p.value);
@@ -2680,10 +2753,6 @@ final class PNL {
 				case pnl_action_set_ulong:
 					version(renderingbytecode) noticeln(cur, ": (setting ulong) '", p.long_value, "'");
 					*cast(ulong*)p.ptr = p.ulong_value;
-				break;
-				case pnl_action_var_float:
-					version(renderingbytecode) noticeln(cur, ": (float) '", *cast(float*)p.ptr, "'");
-					prt(Float.toString(*cast(float*)p.ptr));
 				break;
 				case pnl_action_set_str:
 					version(renderingbytecode) noticeln(cur, ": (setting string) '", p.str_value, "'");
