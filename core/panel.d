@@ -1872,13 +1872,15 @@ final class PNL {
 							PNLByte* p = newByte();
 							p.action = pnl_action_void_delegate;
 							p.dg = ee;
-							
+						}
+						
+						if(ee || !(name in static_object_loaded)) {
 							if(cmd == "loop") {
 								start_new_scope = false;
 								if(inside.length) {
 									int loop_inst = find_loop(inside);
 									if(loop_inst >= 0) {
-										p = newByte();
+										PNLByte* p = newByte();
 										p.action = pnl_action_loop;
 										p.ptr = cast(char*)&obj_loops[inside][loop_inst];
 										
