@@ -953,7 +953,6 @@ string cleanse_url_string(char[] text) {
 }
 
 string between(string str, string left, string right) {
-	noticeln(str.length, `.between("`, left, `","`, right, `")`);
 	string output = null;
 	if(str) {
 		auto offset = str.find_s(left);
@@ -970,7 +969,6 @@ string between(string str, string left, string right) {
 }
 
 string before(string str, string search) {
-	noticeln(str.length, `.before("`, search, `")`);
 	string output = null;
 	
 	if(str) {
@@ -984,7 +982,6 @@ string before(string str, string search) {
 }
 
 string after(string str, string search) {
-	noticeln(str.length, `.after("`, search, `")`);
 	string output = null;
 	
 	if(str) {

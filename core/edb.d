@@ -14,14 +14,7 @@ version(unittests) import unittests;
 
 const string model_dir = "models/";
 
-static mongo_connection* conn;
-static mongo_connection_options* conn_opts;
-
-struct EDB {
-	string host;
-	int port;
-	string db = "test";
-	
+struct EdbStats {
 	size_t objects_loaded_disk;
 	size_t objects_loaded_cache;
 	size_t objects_synced;
@@ -35,7 +28,9 @@ struct EDB {
 	size_t index_destroyed;
 }
 
-static EDB Edb;
+static EdbStats edb_stats;
+static MongoDB edb_connection;
+
 
 void function()[string] edb_inits;
 extern(C) void edb_init(string host = "127.0.0.1", int port = 27017, string db = "test") {
@@ -52,22 +47,7 @@ extern(C) void edb_init(string host = "127.0.0.1", int port = 27017, string db =
 		}
 	}
 	
-	conn = cast(mongo_connection*)new byte[mongo_connection.sizeof];
-	conn_opts = cast(mongo_connection_options*)new byte[mongo_connection_options.sizeof];
-	Edb.host = host.dup;
-	Edb.port = port;
-	Edb.db = db;
-	
-	memcpy(conn_opts.host.ptr, Edb.host.ptr, Edb.host.length);
-	conn_opts.host[Edb.host.length] = 0;
-	conn_opts.port = Edb.port;
-	stdoutln(" * connecting to ", cast(char[])conn_opts.host[0 .. Edb.host.length]);
-	if(mongo_connect(conn, conn_opts)) {
-		//errorln("could not connect to mongo ", cast(char[])conn_opts.host[0 .. Edb.host.length-1], ":", conn_opts.port);
-		throw new Exception("could not connect to mongodb on " ~ cast(char[])conn_opts.host[0 .. Edb.host.length-1] ~ ":" ~ Integer.toString(conn_opts.port));
-	} else {
-		stdoutln(" [DONE]");
-	}
+	edb_connection = new MongoDB(host, port, db);
 	
 	debug noticeln("-- Finished Initializing edb --");
 	debug noticeln("-- Initializing edb objects --");
@@ -102,10 +82,9 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	import tango.core.Memory : GC;
 	
 	// static shit
+	private static MongoCollection collection;
 	private static Data[long] cache;
 	private static string obj_name = "` ~ name ~ `";
-	private static string ns;
-	private static string ns_cmd;
 	static this() {
 		edb_inits["`~name~`"] = &edb_init;
 		` ~ (export_template ? `
@@ -236,12 +215,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	` : ``) ~ `
 	
 	private static void edb_init() {
+		collection = new MongoCollection(edb_connection, "` ~ name ~ `");
 		// remember the namespace
-		noticeln("intializing edb::", Edb.db, ".` ~ name ~ `");
-		typeof(this).ns = Edb.db ~ ".` ~ name ~ `\0";
-		typeof(this).ns.length = typeof(this).ns.length - 1;
-		typeof(this).ns_cmd = Edb.db ~ ".$cmd\0";
-		typeof(this).ns_cmd.length = typeof(this).ns_cmd.length - 1;
+		noticeln("intializing edb::", collection.ns);
+		//typeof(this).ns = edb.db ~ ".` ~ name ~ `\0";
+		//typeof(this).ns.length = typeof(this).ns.length - 1;
+		//typeof(this).ns_cmd = edb.db ~ ".$cmd\0";
+		//typeof(this).ns_cmd.length = typeof(this).ns_cmd.length - 1;
 		
 		// init the object
 		Data d;
@@ -313,56 +293,15 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	static mongo_cursor* _query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
-		mongo_cursor* c;
-		
-		//noticeln("finding... LIMIT ", page_offset * page_size, ", ", page_size, " ...");
-		//bson_print(bson_query);
-		
-		c = mongo_find(conn, (cmd ? ns_cmd.ptr : ns.ptr), bson_query, null, page_size, page_offset * page_size, 0);
-		
-		version(extra_checks) {
-			bson err;
-			if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
-				bson_print(&err);
-			}
-			
-			bson_destroy(&err);
-		}
-		
-		return c;
+		return collection.query(bson_query, page_offset, page_size, cmd);
 	}
 	
 	static long _count(bson* bson_query) {
-		BSON bs;
-		bson b;
-		bson output;
-		long num = -1;
-		
-		auto c = new Cursor(mongo_find(conn, ns_cmd.ptr, bson_query, null, 1, 0, 0));
-		
-		bson err;
-		if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
-			bson_print(&err);
-		}
-		
-		bson_destroy(&err);
-		
-		if(c.next()) {
-			num = c.get("n");
-		}
-		
-		delete c;
-		return num;
+		return collection.count(bson_query);
 	}
 	
 	static long total() {
-		BSON bs;
-		bson b;
-		bs.append("count", obj_name);
-		bs.exportBSON(b);
-		long r = typeof(this)._count(&b);
-		bson_destroy(&b);
-		return r;
+		return collection.total();
 	}
 	
 	static long count(string str_query) {
@@ -712,8 +651,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		if(is_new) {
 			while(true) {
 				
-				mongo_insert(conn, ns.ptr, &b);
-				if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
+				collection.insert(&b);
+				if(edb_connection.error(true)) {
 					bson_print(&err);
 					bson_destroy(&err);
 					_id = find_id();
@@ -730,13 +669,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			bs.append("_id", _id);
 			bs.exportBSON(cond);
 			
-			mongo_update(conn, ns.ptr, &cond, &b, MONGO_UPDATE_UPSERT);
+			collection.update(&cond, &b, MONGO_UPDATE_UPSERT);
 			
 			bson_destroy(&cond);
 			version(extra_checks) {
-				if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
-					bson_print(&err);
-				}
+				edb.error(true);
 			}
 		}
 		
@@ -826,7 +763,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		bs.append("_id", _id);
 		bs.exportBSON(b);
 		
-		mongo_remove(conn, ns.ptr, &b);
+		collection.remove(&b);
 		
 		/*
 		if(id > 0) {
@@ -3061,6 +2998,7 @@ struct BSON {
 	uint cur = 4;
 	
 	void space(uint size) {
+		size++;
 		uint new_size = (-(-(size + cur) & -64));
 		if(new_size > data.length) {
 			data.length = new_size;
@@ -3119,6 +3057,7 @@ struct BSON {
 	}
 	
 	void finish() {
+		// no need for this, because size is always incremented by one
 		space(1);
 		
 		data[cur++] = 0;
@@ -3133,11 +3072,127 @@ struct BSON {
 	}
 }
 
-class Collection {
-	
-	bool connect(string host, int port = 27017) {
+class MongoCursor {
+}
+
+class MongoCollection {
+	this(MongoDB db, string collection) {
+		this.db = db;
 		
-		return true;
+		name0 = collection ~ \0;
+		name = name0[0 .. $-1];
+		
+		ns0 = db.db ~ '.' ~ collection ~ \0;
+		ns = ns0[0 .. $-1];
 	}
+	
+	//TODO!!! - convert this to return a MongoCursor
+	mongo_cursor* query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
+		mongo_cursor* c;
+		
+		//noticeln("finding... LIMIT ", page_offset * page_size, ", ", page_size, " ...");
+		//bson_print(bson_query);
+		
+		c = mongo_find(db.conn, (cmd ? db.ns_cmd0.ptr : ns0.ptr), bson_query, null, page_size, page_offset * page_size, 0);
+		version(extra_checks) edb.error(true);
+		
+		return c;
+	}
+	
+	void insert(bson* b) {
+		mongo_insert(db.conn, ns0.ptr, b);
+	}
+	
+	void remove(bson* cond) {
+		mongo_remove(db.conn, ns0.ptr, cond);
+	}
+	
+	void update(bson* cond, bson* b, int flags = 0) {
+		mongo_update(db.conn, ns0.ptr, cond, b, MONGO_UPDATE_UPSERT);
+	}
+	
+	long count(bson* bson_query) {
+		BSON bs;
+		bson b;
+		bson output;
+		long num = -1;
+		
+		auto c = new Cursor(mongo_find(db.conn, db.ns_cmd0.ptr, bson_query, null, 1, 0, 0));
+		
+		db.error(true);
+		
+		if(c.next()) {
+			num = c.get("n");
+		}
+		
+		delete c;
+		return num;
+	}
+	
+	long total() {
+		BSON bs;
+		bson b;
+		bs.append("count", name);
+		bs.exportBSON(b);
+		long r = count(&b);
+		bson_destroy(&b);
+		return r;
+	}
+	
+protected:
+	public string ns;
+	string ns0;
+	
+	string name;
+	string name0;
+	
+private:
+	MongoDB db;
+}
+
+
+class MongoDB {
+	this(string host, int port = 27017, string db = "test") {
+		conn = cast(mongo_connection*)new byte[mongo_connection.sizeof];
+		conn_opts = cast(mongo_connection_options*)new byte[mongo_connection_options.sizeof];
+		this.host0 = host ~ \0;
+		this.host = host0[0 .. $-1];
+		this.port = port;
+		this.db0 = db ~ \0;
+		this.db = db0[0 .. $-1];
+		this.ns_cmd0 = db ~ ".$cmd\0";
+		
+		memcpy(conn_opts.host.ptr, this.host0.ptr, this.host0.length);
+		conn_opts.port = port;
+		//stdoutln(" * connecting to ", cast(char[])conn_opts.host[0 .. this.host.length]);
+		if(mongo_connect(conn, conn_opts)) {
+			throw new Exception("could not connect to mongodb on " ~ cast(char[])conn_opts.host[0 .. this.host.length-1] ~ ":" ~ Integer.toString(conn_opts.port));
+		}
+	}
+	
+	int error(bool print = false) {
+		bson err;
+		auto error = mongo_cmd_get_last_error(conn, db.ptr, &err);
+		if(print && error) {
+			bson_print(&err);
+		}
+		
+		bson_destroy(&err);
+		return error;
+	}
+	
+protected:
+	string host;
+	string host0;
+	int port;
+	
+	
+	string ns_cmd0;
+	string db;
+	string db0;
+
+private:
+	mongo_connection* conn;
+	mongo_connection_options* conn_opts;
 }
 
