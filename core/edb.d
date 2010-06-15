@@ -707,21 +707,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		//noticeln("saving... ", _id);
 		//bson_print(&b);
 		
-		if(!is_new) {
-			bson cond;
-			BSON bs;
-			bs.append("_id", _id);
-			bs.exportBSON(cond);
-			
-			mongo_update(conn, ns.ptr, &cond, &b, MONGO_UPDATE_UPSERT);
-			
-			version(extra_checks) {
-				if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
-					bson_print(&err);
-				}
-			}
-		}
-		
 		if(is_new) {
 			while(true) {
 				
@@ -735,6 +720,20 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					make_bson_struct(b);
 				} else {
 					break;
+				}
+			}
+		} else {
+			bson cond;
+			BSON bs;
+			bs.append("_id", _id);
+			bs.exportBSON(cond);
+			
+			mongo_update(conn, ns.ptr, &cond, &b, MONGO_UPDATE_UPSERT);
+			
+			bson_destroy(&cond);
+			version(extra_checks) {
+				if(mongo_cmd_get_last_error(conn, Edb.db.ptr, &err)) {
+					bson_print(&err);
 				}
 			}
 		}
