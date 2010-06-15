@@ -528,6 +528,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		cursor = _query(&b, 0, 1);
 		
 		skip_loop = false;
+		current = -1;
+		
 		auto ret = loop();
 		mongo_cursor_destroy(cursor);
 		cursor = null;
@@ -554,7 +556,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return cursor != null;
 	}
 	
-	int loop() {
+	protected int loop() {
 		if(skip_loop == true) {
 			//noticeln("L: skip_loop = false");
 			skip_loop = false;
