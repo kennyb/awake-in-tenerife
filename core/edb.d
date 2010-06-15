@@ -3030,7 +3030,7 @@ struct BSON {
 		static if(is(V == string)) {
 			*cast(int*)(data.ptr + cur) = val_len + 1;
 			cur += int.sizeof;
-			data[cur .. cur + val_len] = value;
+			memcpy(data.ptr + cur, value.ptr, val_len);
 			cur += val_len;
 			data[cur++] = 0;
 		} else static if(is(V == float)) {
