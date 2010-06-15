@@ -952,6 +952,51 @@ string cleanse_url_string(char[] text) {
 	return text2;
 }
 
+string between(string str, string left, string right) {
+	noticeln(str.length, `.between("`, left, `","`, right, `")`);
+	string output = null;
+	if(str) {
+		auto offset = str.find_s(left);
+		if(offset != -1) {
+			offset += left.length;
+			auto offset_end = str.find_s(right, offset);
+			if(offset_end != -1) {
+				output = str[offset .. offset_end];
+			}
+		}
+	}
+	
+	return output;
+}
+
+string before(string str, string search) {
+	noticeln(str.length, `.before("`, search, `")`);
+	string output = null;
+	
+	if(str) {
+		auto offset = str.find_s(search);
+		if(offset != -1) {
+			output = str[0 .. offset];
+		}
+	}
+	
+	return output;
+}
+
+string after(string str, string search) {
+	noticeln(str.length, `.after("`, search, `")`);
+	string output = null;
+	
+	if(str) {
+		auto offset = str.find_s(search);
+		if(offset != -1) {
+			output = str[offset + search.length .. $];
+		}
+	}
+	
+	return output;
+}
+
 //const string tostring = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-";
 const string tostring = "0y23456789ancdsfghJiklmKopqretuvwC1zABxDEFGHIjNLMbOPQRSTUVWXYZ_-";
 
