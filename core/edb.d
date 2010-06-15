@@ -631,7 +631,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	long save() {
-		bson err;
 		bson b;
 		
 		noticeln(obj_name, ".saving(", _id, ")");
@@ -653,8 +652,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				
 				collection.insert(&b);
 				if(edb_connection.error(true)) {
-					bson_print(&err);
-					bson_destroy(&err);
 					_id = find_id();
 					
 					bson_destroy(&b);
@@ -677,7 +674,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			}
 		}
 		
-		bson_destroy(&err);
 		bson_destroy(&b);
 		
 		/*

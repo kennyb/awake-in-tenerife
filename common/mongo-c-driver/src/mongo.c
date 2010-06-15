@@ -318,7 +318,7 @@ mongo_reply * mongo_read_response( mongo_connection * conn ){
 }
 
 mongo_cursor* mongo_find(mongo_connection* conn, const char* ns, bson* query, bson* fields, int nToReturn, int nToSkip, int options){
-    //printf("mongo_find(%d, %d).. ", nToSkip, nToReturn); bson_print(query);
+    //printf("%s.find(%d, %d).. ", ns, nToSkip, nToReturn); bson_print(query);
     int sl;
     mongo_cursor * cursor;
     char * data;
