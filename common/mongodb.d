@@ -55,18 +55,18 @@ struct mongo_message {
 	char data;
 };
 
-struct mongo_reply_fields {
+struct mongo_reply_header {
 	align(1):
 	int flag; /* non-zero on failure */
 	long cursorID;
-	int start;
-	int num;
+	int offset;
+	int count;
 };
 
 struct mongo_reply {
 	align(1):
 	mongo_header head;
-	mongo_reply_fields fields;
+	mongo_reply_header reply_header;
 	char objs;
 };
 
@@ -116,14 +116,14 @@ void looping_read(mongo_connection * conn, void* buf, int len);
 CORE METHODS - insert update remove query getmore
 ------------------------------ */
 
-void mongo_insert( mongo_connection * conn , /*const*/ char * ns , bson * data );
+//void mongo_insert( mongo_connection * conn , /*const*/ char * ns , bson * data );
 void mongo_insert_batch( mongo_connection * conn , /*const*/ char * ns , bson ** data , int num );
 
 const int MONGO_UPDATE_UPSERT = 0x1;
 const int MONGO_UPDATE_MULTI = 0x2;
-void mongo_update(mongo_connection* conn, /*const*/ char* ns, /*const*/ bson* cond, /*const*/ bson* op, int flags);
+//void mongo_update(mongo_connection* conn, /*const*/ char* ns, /*const*/ bson* cond, /*const*/ bson* op, int flags);
 
-void mongo_remove(mongo_connection* conn, /*const*/ char* ns, /*const*/ bson* cond);
+//void mongo_remove(mongo_connection* conn, /*const*/ char* ns, /*const*/ bson* cond);
 
 mongo_cursor* mongo_find(mongo_connection* conn, /*const*/ char* ns, bson* query, bson* fields ,int nToReturn ,int nToSkip, int options);
 bool mongo_cursor_next(mongo_cursor* cursor);

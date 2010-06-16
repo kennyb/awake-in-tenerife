@@ -482,8 +482,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		cursor = _query(&b, this.page_offset, this.page_size);
 		loop();
 		skip_loop = cursor != null ? true : false;
-		noticeln("skip_loop: ", skip_loop);
-		
 		bson_destroy(&b);
 		
 		return cursor != null;
@@ -496,6 +494,10 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			// do nothing!
 		} else if(++current != page_size && cursor && mongo_cursor_next(cursor)) {
 			//noticeln("L: next");
+			if(current == 0) {
+				num_results = cursor.mm.reply_header.count;
+			}
+			
 			// increment the helper variables
 			if(++column >= width) {
 				column = 0;
@@ -966,7 +968,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					case "$limit":
 						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
 						page_size = toUint(val);
-						noticeln("page_size: ", page_size);
 						break;
 						
 					case "$column_width":
@@ -2853,7 +2854,7 @@ unittest {
 	}
 }
 
-class Cursor {
+class MongoCursor {
 	import mongodb;
 	
 	mongo_cursor* c;
@@ -3066,9 +3067,6 @@ struct BSON {
 	}
 }
 
-class MongoCursor {
-}
-
 class MongoCollection {
 	this(MongoDB db, string collection) {
 		this.db = db;
@@ -3082,12 +3080,11 @@ class MongoCollection {
 	
 	//TODO!!! - convert this to return a MongoCursor
 	mongo_cursor* query(bson* query, int offset, int limit, bool cmd = false, int options = 0, bson* fields = null) {
-		mongo_cursor* c;
 		
 		//noticeln("finding... LIMIT ", offset, ", ", limit, " ...");
 		//bson_print(bson_query);
 		
-		c = mongo_find(db.conn, (cmd ? db.ns_cmd0.ptr : ns0.ptr), query, null, limit, offset, 0);
+		mongo_cursor* c = mongo_find(db.conn, (cmd ? db.ns_cmd0.ptr : ns0.ptr), query, null, limit, offset, 0);
 		/*
 		MongoMsg msg;
 		msg.append(options);
@@ -3100,6 +3097,9 @@ class MongoCollection {
 		}
 		
 		msg.send(db.conn, mongo_operations.mongo_op_query);
+		
+		mongo_cursor* c = new mongo_cursor;
+		c.
 		*/
 		
 		version(extra_checks) edb.error(true);
@@ -3142,7 +3142,7 @@ class MongoCollection {
 		bson output;
 		long num = -1;
 		
-		auto c = new Cursor(mongo_find(db.conn, db.ns_cmd0.ptr, bson_query, null, 1, 0, 0));
+		auto c = new MongoCursor(mongo_find(db.conn, db.ns_cmd0.ptr, bson_query, null, 1, 0, 0));
 		
 		db.error(true);
 		
@@ -3195,6 +3195,14 @@ class MongoDB {
 		}
 	}
 	
+	
+	
+	/*
+	bool cmd(string cmd, int arg, bson* output) {
+		
+	}
+	*/
+	
 	int error(bool print = false) {
 		bson err;
 		auto error = mongo_cmd_get_last_error(conn, db.ptr, &err);
@@ -3234,6 +3242,10 @@ struct MongoMsg {
 	size_t cur = 0;
 	char[] msg;
 	
+	mongo_header response_head;
+	mongo_reply_header response_header;
+	char[] response_data;
+	
 	void send(mongo_connection* conn, int op, int responseTo = 0, int id = 0) {
 		head.len = cur + head.sizeof;
 		head.id = id ? id : rand();
@@ -3241,6 +3253,15 @@ struct MongoMsg {
 		head.op = op;
 		looping_write(conn, &head, head.sizeof);
 		looping_write(conn, msg.ptr, cur);
+	}
+	
+	char* response(mongo_connection* conn) {
+		looping_read(conn, &response_head, response_head.sizeof);
+		looping_read(conn, &response_header, response_header.sizeof);
+		auto len = response_head.len - response_head.sizeof - response_header.sizeof;
+		response_data.length = len;
+		looping_read(conn, response_data.ptr, len);
+		return response_data.ptr;
 	}
 	
 	void reserve(size_t size) {
