@@ -109,7 +109,8 @@ mongo_conn_return mongo_reconnect( mongo_connection * conn ); /* you will need t
 bool mongo_disconnect( mongo_connection * conn ); /* use this if you want to be able to reconnect */
 bool mongo_destroy( mongo_connection * conn ); /* you must call this even if connection failed */
 
-
+void looping_write(mongo_connection * conn, /*const*/ void* buf, int len);
+void looping_read(mongo_connection * conn, void* buf, int len);
 
 /* ----------------------------
 CORE METHODS - insert update remove query getmore

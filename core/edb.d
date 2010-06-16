@@ -216,14 +216,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	private static void edb_init() {
 		collection = new MongoCollection(edb_connection, "` ~ name ~ `");
-		// remember the namespace
 		noticeln("intializing edb::", collection.ns);
-		//typeof(this).ns = edb.db ~ ".` ~ name ~ `\0";
-		//typeof(this).ns.length = typeof(this).ns.length - 1;
-		//typeof(this).ns_cmd = edb.db ~ ".$cmd\0";
-		//typeof(this).ns_cmd.length = typeof(this).ns_cmd.length - 1;
 		
-		// init the object
 		Data d;
 		string obj_structure;
 		int obj_version = 0;
@@ -293,7 +287,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	static mongo_cursor* _query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
-		return collection.query(bson_query, page_offset, page_size, cmd);
+		return collection.query(bson_query, page_offset * page_size, page_size, cmd);
 	}
 	
 	static long _count(bson* bson_query) {
@@ -2987,15 +2981,16 @@ class Cursor {
 
 //TODO!! - make custom types for all the types that aren't native D types
 struct BSON {
-	const string empty_bson = "\005\0\0\0\0";
+	static const string empty_bson = "\005\0\0\0\0";
 	
 	alias char[] string;
 	char[] data;
 	uint cur = 4;
+	bool is_finished = false;
 	
-	void space(uint size) {
+	void space(size_t size) {
 		size++;
-		uint new_size = (-(-(size + cur) & -64));
+		size_t new_size = (-(-(size + cur) & -64));
 		if(new_size > data.length) {
 			data.length = new_size;
 		}
@@ -3053,12 +3048,15 @@ struct BSON {
 	}
 	
 	void finish() {
-		// no need for this, because size is always incremented by one
-		space(1);
-		
-		data[cur++] = 0;
-		*cast(uint*)data.ptr = cur;
-		data.length = cur;
+		if(!is_finished) {
+			// no need for this, because size is always incremented by one
+			space(1);
+			
+			data[cur++] = 0;
+			*cast(uint*)data.ptr = cur;
+			data.length = cur;
+			is_finished = true;
+		}
 	}
 	
 	void exportBSON(inout bson b) {
@@ -3083,28 +3081,59 @@ class MongoCollection {
 	}
 	
 	//TODO!!! - convert this to return a MongoCursor
-	mongo_cursor* query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
+	mongo_cursor* query(bson* query, int offset, int limit, bool cmd = false, int options = 0, bson* fields = null) {
 		mongo_cursor* c;
 		
 		//noticeln("finding... LIMIT ", page_offset * page_size, ", ", page_size, " ...");
 		//bson_print(bson_query);
 		
 		c = mongo_find(db.conn, (cmd ? db.ns_cmd0.ptr : ns0.ptr), bson_query, null, page_size, page_offset * page_size, 0);
+		/*
+		MongoMsg msg;
+		msg.append(options);
+		msg.append(ns0);
+		msg.append(offset);
+		msg.append(limits);
+		msg.append(query);
+		if(fields) {
+			msg.append(fields);
+		}
+		
+		msg.send(db.conn, mongo_operations.mongo_op_query);
+		*/
+		
 		version(extra_checks) edb.error(true);
 		
 		return c;
 	}
 	
 	void insert(bson* b) {
-		mongo_insert(db.conn, ns0.ptr, b);
+		MongoMsg msg;
+		msg.append(cast(int) 0);
+		msg.append(ns0);
+		msg.append(b);
+		msg.send(db.conn, mongo_operations.mongo_op_insert);
 	}
 	
 	void remove(bson* cond) {
-		mongo_remove(db.conn, ns0.ptr, cond);
+		//mongo_remove(db.conn, ns0.ptr, cond);
+		MongoMsg msg;
+		msg.append(cast(int) 0);
+		msg.append(ns0);
+		msg.append(cast(int) 0);
+		msg.append(cond);
+		msg.send(db.conn, mongo_operations.mongo_op_delete);
 	}
 	
 	void update(bson* cond, bson* b, int flags = 0) {
-		mongo_update(db.conn, ns0.ptr, cond, b, MONGO_UPDATE_UPSERT);
+		//mongo_update(db.conn, ns0.ptr, cond, b, MONGO_UPDATE_UPSERT);
+		MongoMsg msg;
+		msg.append(cast(int) 0);
+		msg.append(ns0);
+		msg.append(flags);
+		msg.append(cond);
+		msg.append(b);
+		msg.send(db.conn, mongo_operations.mongo_op_update);
 	}
 	
 	long count(bson* bson_query) {
@@ -3190,5 +3219,71 @@ protected:
 private:
 	mongo_connection* conn;
 	mongo_connection_options* conn_opts;
+}
+
+struct MongoMsg {
+	import tango.stdc.stdlib;
+	struct Header {
+		int len;
+		int id;
+		int responseTo;
+		int op;
+	}
+	
+	Header head;
+	size_t cur = 0;
+	char[] msg;
+	
+	void send(mongo_connection* conn, int op, int responseTo = 0, int id = 0) {
+		head.len = cur + head.sizeof;
+		head.id = id ? id : rand();
+		head.responseTo = responseTo;
+		head.op = op;
+		looping_write(conn, &head, head.sizeof);
+		looping_write(conn, msg.ptr, cur);
+	}
+	
+	void reserve(size_t size) {
+		size++;
+		size_t new_size = (-(-(size + cur) & -64));
+		if(new_size > msg.length) {
+			msg.length = new_size;
+		}
+	}
+	
+	void append(BSON b) {
+		b.finish();
+		auto len = *cast(int*)b.data.ptr;
+		append(b.data.ptr, len);
+	}
+	
+	void append(bson* b) {
+		auto len = *cast(int*)b.data;
+		append(b.data, len);
+	}
+	
+	void append(char* ptr, size_t len) {
+		reserve(len);
+		memcpy(msg.ptr + cur, ptr, len);
+		cur += len;
+	}
+	
+	void append(string val) {
+		auto len = val.length;
+		reserve(len);
+		memcpy(msg.ptr + cur, val.ptr, len);
+		cur += len;
+	}
+	
+	void append(int val) {
+		reserve(val.sizeof);
+		memcpy(msg.ptr + cur, &val, val.sizeof);
+		cur += val.sizeof;
+	}
+	
+	void append(char val) {
+		reserve(1);
+		msg[cur++] = val;
+	}
 }
 

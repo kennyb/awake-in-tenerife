@@ -38,7 +38,7 @@ static const int one = 1;
    message stuff
    ------------------------------ */
 
-static void looping_write(mongo_connection * conn, const void* buf, int len){
+void looping_write(mongo_connection * conn, const void* buf, int len){
     const char* cbuf = buf;
     while (len){
         int sent = send(conn->sock, cbuf, len, 0);
@@ -48,7 +48,7 @@ static void looping_write(mongo_connection * conn, const void* buf, int len){
     }
 }
 
-static void looping_read(mongo_connection * conn, void* buf, int len){
+void looping_read(mongo_connection * conn, void* buf, int len){
     char* cbuf = buf;
     while (len){
         int sent = recv(conn->sock, cbuf, len, 0);
