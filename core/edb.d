@@ -3084,10 +3084,10 @@ class MongoCollection {
 	mongo_cursor* query(bson* query, int offset, int limit, bool cmd = false, int options = 0, bson* fields = null) {
 		mongo_cursor* c;
 		
-		//noticeln("finding... LIMIT ", page_offset * page_size, ", ", page_size, " ...");
+		//noticeln("finding... LIMIT ", offset, ", ", limit, " ...");
 		//bson_print(bson_query);
 		
-		c = mongo_find(db.conn, (cmd ? db.ns_cmd0.ptr : ns0.ptr), bson_query, null, page_size, page_offset * page_size, 0);
+		c = mongo_find(db.conn, (cmd ? db.ns_cmd0.ptr : ns0.ptr), query, null, limit, offset, 0);
 		/*
 		MongoMsg msg;
 		msg.append(options);
