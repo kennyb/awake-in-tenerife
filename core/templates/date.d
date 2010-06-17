@@ -156,9 +156,9 @@ class TemplateDate {
 		case FORMAT_DELTA_SECONDS:
 		case FORMAT_DATEDELTA:
 		case FORMAT_DATEDELTA_USA:
-			auto delta = request_time/* + session.timezone*/ - date;
+			int delta = request_time/* + session.timezone*/ - date;
 			bool is_future = false;
-			if(request_time < date) {
+			if(delta < 0) {
 				is_future = true;
 				delta = -delta;
 			}
@@ -172,16 +172,16 @@ class TemplateDate {
 			} else {
 				if(delta >= 24*60*60) {
 					if(format == FORMAT_DATEDELTA) {
-						auto str_len = strftime(cast(char*)&tmp, 40, cast(char*)"%d/%m/%Y\0", tm_struct);
+						auto str_len = strftime(cast(char*)&tmp, 40, "%d/%m/%Y\0", tm_struct);
 						prt(tmp[0 .. str_len]);
 						break;
 					} else if(format == FORMAT_DATEDELTA_USA) {
-						auto str_len = strftime(cast(char*)&tmp, 40, cast(char*)"%m/%d/%Y\0", tm_struct);
+						auto str_len = strftime(cast(char*)&tmp, 40, "%m/%d/%Y\0", tm_struct);
 						prt(tmp[0 .. str_len]);
 						break;
 					} else {
-						auto days = delta / 24*60*60;
-						delta -= days * 24*60*60;
+						int days = delta / 24 / 60 / 60;
+						delta -= days * 24 * 60 * 60;
 						
 						prt(Integer.toString(days));
 						prt(" days");
@@ -197,9 +197,9 @@ class TemplateDate {
 					}
 				}
 				
-				if(delta >= 60*60) {
-					auto hours = delta / (60*60);
-					delta -= hours * 60*60;
+				if(delta >= 60 * 60) {
+					int hours = delta / 60 / 60;
+					delta -= hours * 60 * 60;
 					
 					prt(Integer.toString(hours));
 					prt(" hours");
@@ -215,7 +215,7 @@ class TemplateDate {
 				}
 				
 				if(delta >= 60) {
-					auto minutes = delta / 60;
+					int minutes = delta / 60;
 					delta -= minutes * 60;
 					
 					prt(Integer.toString(minutes));
