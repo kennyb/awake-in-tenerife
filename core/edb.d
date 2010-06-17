@@ -546,7 +546,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 						char* ptr_str = bson_iterator_string(&it);
 						
 						static if(is(typeof(data.tupleof[j]) == string)) {
-							data.tupleof[j].length = len;
+							//data.tupleof[j].length = len;
+							data.tupleof[j] = new char[len];
 							memcpy(data.tupleof[j].ptr, ptr_str, len);
 						} else {
 							errorln("not yet supported");
@@ -2883,10 +2884,10 @@ class MongoCursor {
 			
 			char* ptr0 = ptr;
 			while(*ptr0++) {}
-			auto label_len = ptr0 - ptr - 1;
+			auto label_len = ptr0 - ptr;
 				
-			string label2 = cast(string)ptr[0 .. label_len];
-			ptr += label_len + 1;
+			string label2 = cast(string)ptr[0 .. label_len-1];
+			ptr += label_len;
 			if(label == label2) {
 				break;
 			}
