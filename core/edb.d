@@ -313,13 +313,14 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		foreach(j, caca; data.tupleof) {
 			string field = this.data.tupleof[j].stringof["this.data.".length .. $];
 			
-			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short) || is(typeof(data.tupleof[j]) == bool)) {
+			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
 				// int1 / int2
 				bs.append(field, cast(int) data.tupleof[j]);
+				//static assert(false, "for some alignment bug, this isn't supported yet");
 			} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int) || is(typeof(data.tupleof[j]) == float) || is(typeof(data.tupleof[j]) == double) || is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long)) {
 				// int4 / int8 / float4 / float8 / string(word)
 				bs.append(field, data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == string)) {
+			} else static if(is(typeof(data.tupleof[j]) == string) || is(typeof(data.tupleof[j]) == bool)) {
 				bs.append(field, data.tupleof[j]);
 			} else {
 				static assert(false, "no bson conversion for " ~ data.tupleof[j].stringof);
@@ -3012,6 +3013,8 @@ struct BSON {
 			double val = cast(double)value;
 			*cast(double*)(data.ptr + cur) = *cast(double*)&val;
 			cur += double.sizeof;
+		} else static if(is(V == bool)) {
+			data[cur++] = value;
 		} else static if(is(V == bson)) {
 			if(bson_size) {
 				memcpy(data.ptr + cur, value.data, bson_size);
