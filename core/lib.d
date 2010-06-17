@@ -18,6 +18,8 @@ import libowfat;
 import externs;
 //version(unittests) import unittests;
 
+extern(C) char* strptime(in char*, in char*, tm*);
+
 // success is 0-infinity
 // failure is -1 - -1000
 enum {
@@ -111,6 +113,32 @@ double microtime() {
 		(tv.tv_usec * (1/(1000000 / cast(double)CLOCKS_PER_SEC)));
 }
 
+int parseJSTimeStr(string time) {
+	tm t;
+	string time0 = time~\0;
+	
+	auto plus = time.find_c('+');
+	int tz_offset;
+	if(plus != -1) {
+		tz_offset = toInt(time[++plus .. $]);
+	} else {
+		auto minus = time.find_c('-');
+		if(minus != -1) {
+			tz_offset = -toInt(time[++minus .. $]);
+		}
+	}
+	
+	if(tz_offset) {
+		tz_offset = (tz_offset / 100) * 3600;
+	}
+	
+	strptime(time0.ptr, "%a, %d %b %Y %H:%M:%S", &t);
+	return mktime(&t) - tz_offset;
+}
+
+unittest {
+	assert(parseJSTimeStr("Sat, 19 Jun 2010 23:57:00 +0200") == 1276984620);
+}
 
 string html_entities(string str, bool escape = false) {
 	str = replace_cs(str, '<', "&lt;");
