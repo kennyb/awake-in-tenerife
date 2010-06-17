@@ -2886,7 +2886,10 @@ class MongoCursor {
 		while(type) {
 			type = cast(bson_type) *ptr++;
 			
-			auto label_len = find_c(data, 0) - 1;
+			char* ptr0 = ptr;
+			while(*ptr0++) {}
+			auto label_len = ptr0 - ptr - 1;
+				
 			string label2 = cast(string)ptr[0 .. label_len];
 			ptr += label_len + 1;
 			if(label == label2) {
