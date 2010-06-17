@@ -320,7 +320,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				// int4 / int8 / float4 / float8 / string(word)
 				bs.append(field, data.tupleof[j]);
 			} else static if(is(typeof(data.tupleof[j]) == string)) {
-				bs.append(field, data.tupleof[j].dup);
+				bs.append(field, data.tupleof[j]);
 			} else {
 				static assert(false, "no bson conversion for " ~ data.tupleof[j].stringof);
 			}
@@ -343,7 +343,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	//OPTIMIZE!!!! - remove the align, since we use tupleof[] now
 	struct Data {
-		align(1):
 		long _id;
 		` ~ data_layout ~ `
 	}
@@ -351,7 +350,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	union {
 		private Data data;
 		struct {
-			align(1):
 			long _id;
 			` ~ data_layout ~ `
 		}
@@ -1547,8 +1545,6 @@ version(unittests) {
 		`));
 	}
 	
-	static assert(UserDataModelVersion1.Data.sizeof == (long.sizeof + int.sizeof + string.sizeof*2));
-	
 	class UserDataModelVersion2 {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
@@ -1558,8 +1554,6 @@ version(unittests) {
 		`));
 	}
 	
-	static assert(UserDataModelVersion2.Data.sizeof == (long.sizeof + int.sizeof + string.sizeof*3));
-	
 	class UserDataModelVersion3 {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
@@ -1567,8 +1561,6 @@ version(unittests) {
 			string lastname;
 		`));
 	}
-	
-	static assert(UserDataModelVersion3.Data.sizeof == (long.sizeof + int.sizeof + string.sizeof*2));
 	
 	class UserDataModelVersion4 {
 		mixin(GenDataModel!("UnittestUser", `
@@ -1579,8 +1571,6 @@ version(unittests) {
 		`));
 	}
 	
-	static assert(UserDataModelVersion4.Data.sizeof == (long.sizeof + int.sizeof*2 + string.sizeof*2));
-	
 	class UserDataModelVersion5 {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
@@ -1589,8 +1579,6 @@ version(unittests) {
 			string lastname;
 		`));
 	}
-	
-	static assert(UserDataModelVersion5.Data.sizeof == (long.sizeof + int.sizeof*2 + string.sizeof*2));
 	
 	class UserDataModelVersion6 {
 		mixin(GenDataModel!("UnittestUser", `
@@ -1601,8 +1589,6 @@ version(unittests) {
 			string lastname;
 		`));
 	}
-	
-	static assert(UserDataModelVersion6.Data.sizeof == (long.sizeof + int.sizeof*2 + string.sizeof*3));
 	
 	class UserDataModelVersion7 {
 		mixin(GenDataModel!("UnittestUser", `
@@ -1615,8 +1601,6 @@ version(unittests) {
 		`));
 	}
 	
-	static assert(UserDataModelVersion7.Data.sizeof == (long.sizeof + int.sizeof*3 + string.sizeof*3));
-	
 	class UserDataModelVersion8 {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
@@ -1627,8 +1611,6 @@ version(unittests) {
 		`));
 	}
 	
-	static assert(UserDataModelVersion8.Data.sizeof == (long.sizeof + int.sizeof*2 + string.sizeof*3));
-	
 	class UserDataModelVersion9 {
 		mixin(GenDataModel!("UnittestUser", `
 			string lastname;
@@ -1638,8 +1620,6 @@ version(unittests) {
 			string middlename;
 		`));
 	}
-	
-	static assert(UserDataModelVersion9.Data.sizeof == (long.sizeof + int.sizeof*2 + string.sizeof*3));
 	
 	class UnittestPhotoTag : TemplateObject {
 		mixin(GenDataModel!("UnittestPhotoTag", `
