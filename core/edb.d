@@ -40,13 +40,6 @@ extern(C) void edb_init(string host = "127.0.0.1", int port = 27017, string db =
 		fp_model_dir.createFolder();
 	}
 	
-	version(unittests) {
-		if(conn) {
-			mongo_disconnect(conn);
-			mongo_destroy(conn);
-		}
-	}
-	
 	edb_connection = new MongoDB(host, port, db);
 	
 	debug noticeln("-- Finished Initializing edb --");
@@ -1418,6 +1411,7 @@ void load_struct(string schema, ubyte* data_ptr, void* struct_ptr) {
 version(unittests) {
 	import panel;
 	
+	/*
 	class Test_mongodb : Unittest {
 		static this() { Unittest.add(typeof(this).stringof, new typeof(this));}
 		
@@ -1541,6 +1535,7 @@ version(unittests) {
 			}
 		}
 	}
+	*/
 	
 	
 	class UserDataModelVersion1 {
@@ -1664,14 +1659,14 @@ version(unittests) {
 		static this() { Unittest.add(typeof(this).stringof, new typeof(this));}
 		
 		void prepare() {
-			mongo_cmd_drop_collection(conn, "test", "UnittestUser", null);
-			mongo_cmd_drop_collection(conn, "test", "UnittestPhotoTag", null);
+			edb_connection.cmd("drop", "UnittestUser");
+			edb_connection.cmd("drop", "UnittestPhotoTag");
 			reset_state();
 		}
 		
 		void clean() {
-			mongo_cmd_drop_collection(conn, "test", "UnittestUser", null);
-			mongo_cmd_drop_collection(conn, "test", "UnittestPhotoTag", null);
+			edb_connection.cmd("drop", "UnittestUser");
+			edb_connection.cmd("drop", "UnittestPhotoTag");
 			reset_state();
 		}
 		
@@ -3198,13 +3193,39 @@ class MongoDB {
 		}
 	}
 	
-	
-	
-	/*
-	bool cmd(string cmd, int arg, bson* output) {
+	bool _cmd(bson* cmd) {
+		bool success;
 		
+		auto c = new MongoCursor(mongo_find(conn, ns_cmd0.ptr, cmd, null, 1, 0, 0));
+		
+		if(c.next()) {
+			success = cast(bool) c.get("ok");
+		}
+		
+		delete c;
+		return success;
 	}
-	*/
+		
+	
+	bool cmd(string cmd, int arg) {
+		BSON bs;
+		bson bson_query;
+		
+		bs.append(cmd, arg);
+		bs.exportBSON(bson_query);
+		
+		return _cmd(&bson_query);
+	}
+	
+	bool cmd(string cmd, string arg) {
+		BSON bs;
+		bson bson_query;
+		
+		bs.append(cmd, arg);
+		bs.exportBSON(bson_query);
+		
+		return _cmd(&bson_query);
+	}
 	
 	int error(bool print = false) {
 		bson err;
