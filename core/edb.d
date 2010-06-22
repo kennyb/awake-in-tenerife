@@ -132,6 +132,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			pnl.registerUint("` ~ name ~ `.current", &obj.current);
 			pnl.registerUint("` ~ name ~ `.column", &obj.column);
 			pnl.registerUint("` ~ name ~ `.count", &obj.num_results);
+			pnl.registerUint("` ~ name ~ `.offset", &obj.result_offset);
 			pnl.registerFunction("` ~ name ~ `.count", &count);
 			pnl.registerFunction("` ~ name ~ `.total", &count);
 			pnl.registerLoop("` ~ name ~ `", &obj.loop);
@@ -362,6 +363,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	private uint current = -1;
 	private uint column = -1;
 	uint num_results;
+	uint result_offset;
 	
 	private uint* ptr_page_offset;
 	private uint* ptr_page_size;
@@ -488,6 +490,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			//noticeln("L: next");
 			if(current == 0) {
 				num_results = cursor.mm.reply_header.count;
+				result_offset = cursor.mm.reply_header.offset;
 			}
 			
 			// increment the helper variables
