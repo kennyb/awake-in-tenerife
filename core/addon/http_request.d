@@ -6,6 +6,7 @@ import tango.stdc.string : memcpy;
 import tango.text.xml.Document;
 import tango.sys.Process : Process, ProcessCreateException;
 import tango.io.device.File : File;
+import Path = tango.io.Path;
 
 import libowfat;
 import lib;
@@ -48,6 +49,7 @@ class HttpRequest {
 	public string error;
 	public int status;
 	public string[string] cookie;
+	public int timeout = 5;
 	
 	static this() {
 		exec("rm -f /tmp/http_request.*");
@@ -112,6 +114,8 @@ class HttpRequest {
 		curl_cmd ~= cookies_file;
 		curl_cmd ~= "-c";
 		curl_cmd ~= cookies_file;
+		curl_cmd ~= "-m";
+		curl_cmd ~= Integer.toString(timeout);
 		
 		if(port != 80) {
 			uri ~= ":"~Integer.toString(port);
@@ -163,6 +167,10 @@ class HttpRequest {
 		//	noticeln(e.toString());
 		//	return FAILURE;
 		//}
+		
+		if(!Path.exists(filename)) {
+			return 408;
+		}
 		
 		//output_header = trim(cast(string) File.get(filename~".header"));
 		output = cast(string) File.get(filename);
