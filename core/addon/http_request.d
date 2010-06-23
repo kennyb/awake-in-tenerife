@@ -4,6 +4,8 @@ import tango.stdc.posix.unistd;
 import tango.stdc.string : memcpy;
 
 import tango.text.xml.Document;
+import tango.sys.Process : Process, ProcessCreateException;
+import tango.io.device.File : File;
 
 import libowfat;
 import lib;
@@ -40,10 +42,15 @@ class HttpRequest {
 	private string req_header;
 	private string host;
 	private ubyte[4][] ips;
-	string output_header;
-	string output;
+	private string filename;
+	public string output_header;
+	public string output;
+	public string error;
+	public int status;
+	public string[string] cookie;
 	
 	static this() {
+		exec("rm -f /tmp/http_request.*");
 		static char seed[128];
 		dns_random_init(&seed[0]);
 		ip["localhost"] ~= [127, 0 , 0, 1];
@@ -51,6 +58,7 @@ class HttpRequest {
 	
 	this(string host, string header = null) {
 		this.host = host;
+		this.filename = "/tmp/http_request." ~ rand_str(40).remove_c('-');
 		if(header.length) {
 			req_header = trim(header) ~ "\r\n\r\n";
 		} else {
@@ -58,11 +66,15 @@ class HttpRequest {
 		}
 		
 		// resolve the dns of that host
-		if(!(host in ip)) {
-			resolve();
-		} else {
-			ips = ip[host];
-		}
+		//if(!(host in ip)) {
+		//	resolve();
+		//} else {
+		//	ips = ip[host];
+		//}
+	}
+	
+	~this() {
+		
 	}
 	
 	private void resolve() {
@@ -73,7 +85,7 @@ class HttpRequest {
 			while(ret-- > 0) {
 				size_t i = ret << 2;
 				ubyte[4] j = hosts[i .. i + 4];
-				debug stdoutln("found: ", cast(int)j[0], ".", cast(int)j[1], ".", cast(int)j[2], ".", cast(int)j[3]);
+				//debug stdoutln("found: ", cast(int)j[0], ".", cast(int)j[1], ".", cast(int)j[2], ".", cast(int)j[3]);
 				ip[host] ~= j;
 			}
 			
@@ -83,7 +95,167 @@ class HttpRequest {
 		}
 	}
 	
-	int get(string uri, ushort port = 80) {
+	public int get(string uri, ushort port = 80, bool tidy_it = false) {
+		string[] curl_args;
+		status = FAILURE;
+		string header_file = filename ~ ".header";
+		string cookies_file = filename ~ ".cookies";
+		
+		string[] curl_cmd;// = `curl --silent -o ` ~ filename;
+		curl_cmd ~= "curl";
+		curl_cmd ~= "-s";
+		curl_cmd ~= "-i";
+		curl_cmd ~= "-L";
+		curl_cmd ~= "-D";
+		curl_cmd ~= header_file;
+		curl_cmd ~= "-b";
+		curl_cmd ~= cookies_file;
+		curl_cmd ~= "-c";
+		curl_cmd ~= cookies_file;
+		
+		if(port != 80) {
+			uri ~= ":"~Integer.toString(port);
+		}
+		
+		ptrdiff_t nl;
+		ptrdiff_t last = 0;
+		while((nl = req_header.find_s("\r\n", last)) != -1) {
+			auto h = req_header[last .. nl].trim();
+			last = nl+2;
+			if(h.length && h.find_s("Cookie: ") != 0) {
+				curl_cmd ~= "-H";
+				curl_cmd ~= '"'~h~'"';
+			}
+		}
+		
+		auto i_existing_cookie = req_header.find_s("\r\nCookie: ");
+		if(i_existing_cookie != -1) {
+			auto existing_cookie = req_header.between("\r\nCookie: ", "\r\n", i_existing_cookie).trim();
+			if(existing_cookie.length) {
+				noticeln("parsing existing cookie: ", existing_cookie);
+				cookie.parse_cookie(existing_cookie);
+				req_header = req_header[0 .. i_existing_cookie] ~ req_header[i_existing_cookie + existing_cookie.length .. $];
+			}
+		}
+		
+		if(cookie.length) {
+			auto new_cookie = cookie.join('=', "; ");
+			req_header ~= "\r\nCookie: " ~ new_cookie;
+			curl_cmd ~= "-H";
+			curl_cmd ~= `"Cookie: ` ~ new_cookie~'"';
+		}
+		
+		curl_cmd ~= "-o";
+		curl_cmd ~= filename;
+		curl_cmd ~= `http://`~host~uri;
+		
+		//try {
+			//File.set(cookies_file, "");
+			noticeln("exec: ", curl_cmd.join(' '));
+			auto p_curl = new Process(curl_cmd, null);
+			//scope(exit) delete p_curl;
+			
+			p_curl.execute();
+			p_curl.wait;
+			
+			
+		//} catch(Exception e) {
+		//	noticeln(e.toString());
+		//	return FAILURE;
+		//}
+		
+		//output_header = trim(cast(string) File.get(filename~".header"));
+		output = cast(string) File.get(filename);
+		
+		//return parse(tidy_it);
+		
+		output_header = null;
+		error = null;
+		
+		auto loc = find_s(output, "\r\n\r\n");
+		noticeln("header: ", loc);
+		if(loc != -1) {
+			loc += 4;
+			if(output.length > loc) {
+				status = toUint(output["HTTP/1.0 ".length .. "HTTP/1.0 ".length+3]);
+				this.output_header = trim(output[0 .. loc]);
+				
+				size_t i_last = 0;
+				ptrdiff_t i_cookie;
+				ptrdiff_t i_cookie_end;
+				while(
+						(i_cookie = output_header.find_s("\r\nSet-Cookie: ", i_last)) != -1 &&
+						(i_cookie += "\r\nSet-Cookie: ".length) < output_header.length &&
+						(i_cookie_end = output_header.find_s("; ", i_cookie)) != -1
+					) {
+					cookie.parse_cookie(output_header[i_cookie .. i_cookie_end]);
+					i_last = i_cookie_end;
+				}
+				
+				string set_cookie = output_header.between("\r\nSet-Cookie: ", "; ").trim();
+				if(set_cookie.length) {
+					cookie.parse_cookie(set_cookie);
+					set_cookie = cookie.to_url();
+					
+					auto existing_cookie = req_header.find_s("\r\nCookie: ");
+					if(existing_cookie == -1) {
+						req_header ~= "\r\nCookie: " ~ set_cookie;
+					} else {
+						existing_cookie += "\r\nCookie: ".length;
+						auto end_cookie = req_header.find_s("\r\n", existing_cookie);
+						if(end_cookie != -1) {
+							req_header = req_header[0 .. existing_cookie] ~ set_cookie ~ req_header[end_cookie .. $];
+						}
+					}
+				}
+				
+				/+
+				string url = output_header.between("\r\nLocation: ", "\r\n").trim();
+				if(url.length) {
+					string host = url.after("://");
+					url = '/' ~ host.after("/");
+					host = host.before("/");
+					
+					if(host == null) {
+						host = this.host;
+						if(url[0] != '/') {
+							error = `a relative path redirect needs to begin with a /`;
+							return FAILURE;
+						}
+					}
+					
+					auto http = new typeof(this)(host, req_header);
+					return http.get(url);
+				}
+				+/
+				
+				if(find_s(output_header, "Content-Encoding: gzip") == -1) {
+					output = output[loc .. $];
+				} else {
+					stdoutln("cannot uncompress gzip!");
+					output = output[loc .. $];
+				}
+				
+				if(tidy_it) {
+					noticeln("tidying... ", output[0 .. 50]);
+					File.set(filename ~ ".tidy", output);
+					auto p_tidy = new Process(`tidy -asxhtml -b -utf8 -m ` ~ filename, null);
+					//scope(exit) delete p_curl;
+					p_tidy.execute();
+					p_tidy.wait;
+					output = cast(string) File.get(filename ~ ".tidy");
+				}
+				
+				noticeln("output: ", output.length);
+				return status;
+			}
+		}
+		
+		error = `empty response`;
+		return FAILURE;
+		
+		
+		/*
 		string request = "GET /";
 		output = null;
 		if(uri.length >= 1) {
@@ -93,7 +265,8 @@ class HttpRequest {
 				request ~= uri;
 			}
 			
-			request ~= " HTTP/1.0\r\nConnection: close\r\nAccept-Encoding:\r\nAccept: text/plain\r\nHost: " ~ host ~ "\r\n" ~ req_header;
+			request ~= " HTTP/1.0\r\nConnection: close\r\nContent-Type: text/xml; charset=utf-8\r\nAccept-Encoding:\r\nAccept: text/plain\r\nHost: " ~ host ~ "\r\n" ~ req_header;
+			debug noticeln("--->\n", request.trim(), " ...");
 			auto s = socket_tcp4b();
 			auto d = io_fd(s);
 			
@@ -140,34 +313,16 @@ class HttpRequest {
 		
 		delete request;
 		return 0;
+		*/
 	}
 	
-	int post(string uri) {
+	public int post(string uri) {
 		stdoutln("TODO!! - implement posting");
 		return -1;
 	}
 	
-	private int parse() {
-		if(output.length > "HTTP/1.0 ".length) {
-			auto loc = find_s(output, "\r\n\r\n");
-			if(loc != -1) {
-				loc += 4;
-				if(output.length > loc) {
-					int ret = toUint(output["HTTP/1.0 ".length .. "HTTP/1.0 ".length+3]);
-					output_header = trim(output[0 .. loc]);
-					if(find_s(output_header, "Content-Encoding: gzip") == -1) {
-						output = output[loc .. $];
-					} else {
-						stdoutln("cannot uncompress gzip!");
-						output = output[loc .. $];
-					}
-					
-					return ret;
-				}
-			}
-		}
+	//private int parse(bool tidy_it) {
 		
-		return FAILURE;
-	}
+	//}
 }
 
