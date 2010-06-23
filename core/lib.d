@@ -246,6 +246,41 @@ string clean_text(string text) {
 	}
 }
 
+void parse_cookie(inout string[string] options, string qs) {
+	//TODO!!!! - write unittests for this function
+	//OPTIMIZE! - surely this can be done faster... cleanse_url_string is slow.
+	size_t len = qs.length;
+	size_t eq = 0;
+	size_t last_amp = 0;
+	size_t i = 0;
+	while(i < len) {
+		if(eq == 0 && qs[i] == '=') {
+			eq = i;
+		}
+		
+		if((qs[i] == ' ' && qs[i-1] == ';') || i+1 == len) {
+			if(i+1 == len) {
+				i+=2;
+			}
+			
+			string key;
+			if(eq > last_amp) {
+				key = qs[last_amp .. eq++];
+			}
+			
+			if(eq > last_amp) {
+				string value;
+				options[key] = cleanse_url_string(qs[eq .. i-1]);
+			}
+			
+			assert(i >= len || (qs[i] == ' ' && qs[i-1] == ';'));
+			last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
+			eq = 0;
+		}
+		
+		i++;
+	}
+}
 
 // no return types, unless it's an array, then it returns the { ....
 void parse_options(inout string[string] options, string text, bool string_quotes = false) {
@@ -694,22 +729,26 @@ restart:
 }
 
 string replace_cc(string str, char f, char r) {
-	string output = str.dup;
+	string output = null;
 	auto len = str.length;
 	for(uint i = 0; i < len; i++) {
 		if(str[i] == f) {
+			if(!output.length) {
+				output = str.dup;
+			}
+			
 			output[i] = r;
 		}
 	}
 	
-	return output;
+	return output.length ? output : str;
 }
 
 string replace_cs(string str, char f, string r) {
 	string output;
-	output.length = (str.length * r.length) >> 2;
-	output.length = 0;
 	auto len = str.length;
+	output.length = (len * r.length) >> 2;
+	output.length = 0;
 	
 	// OPTIMIZE!! - this can be used by a steady increase of length in the string instead of concat operators
 	for(size_t i = 0; i < len; i++) {
@@ -727,10 +766,10 @@ string replace_cs(string str, char f, string r) {
 string replace_ss(string str, string f, string r) {
 	string output;
 	//OPTIMIZE!! - if the string sizes are the same, this can be optimized
-	output.length = (str.length * r.length) >> 2;
-	output.length = 0;
 	auto len = str.length;
 	auto flen = f.length;
+	output.length = (len * r.length) >> 2;
+	output.length = 0;
 	size_t i = 0;
 	
 restart:
@@ -743,7 +782,7 @@ restart:
 			}
 		}
 		
-		i += f.length;
+		i += flen;
 		output ~= r;
 	}
 	
@@ -751,43 +790,42 @@ restart:
 }
 
 string replace_sc(string str, string f, char r) {
-	string output;
-	output.length = str.length;
-	output.length = 0;
+	string output = null;
 	auto len = str.length;
 	auto flen = f.length;
+	output.length = len;
+	output.length = 0;
 	size_t i = 0;
 	size_t j;
 	
 restart:
-	while(true) {
-		j = find_s(str, f, i);
-		if(j != -1) {
-			output ~= str[i .. j] ~  r;
-			i = j + flen;
-		} else {
-			break;
+	while((j = str.find_s(f, i)) != -1) {
+		output ~= str[i .. j] ~  r;
+		i = j + flen;
+	}
+	
+	if(output.length) {
+		if(i < len) {
+			output ~= str[i .. $];
 		}
+		
+		return output;
+	} else {
+		return str;
 	}
-	
-	if(i < len) {
-		output ~= str[i .. $];
-	}
-	
-	return output;
 }
 
 string remove_c(string str, char f) {
 	string output;
-	output.length = str.length;
-	output.length = 0;
 	auto len = str.length;
+	output.length = len;
+	output.length = 0;
 	size_t i = 0;
 	size_t j;
 	
 restart:
 	while(true) {
-		j = find_c(str, f, i);
+		j = str.find_c(f, i);
 		if(j != -1) {
 			output ~= str[i .. j];
 			i = ++j;
@@ -805,16 +843,16 @@ restart:
 
 string remove_s(string str, string f) {
 	string output;
-	output.length = str.length;
-	output.length = 0;
 	auto len = str.length;
 	auto flen = f.length;
+	output.length = len;
+	output.length = 0;
 	size_t i = 0;
 	size_t j;
 	
 restart:
 	while(true) {
-		j = find_s(str, f, i);
+		j = str.find_s(f, i);
 		if(j != -1) {
 			output ~= str[i .. j];
 			i = j + flen;
@@ -980,15 +1018,15 @@ string cleanse_url_string(char[] text) {
 	return text2;
 }
 
-string between(string str, string left, string right) {
+string between(string str, string left, string right, int offset = 0) {
 	string output = null;
-	if(str) {
-		auto offset = str.find_s(left);
-		if(offset != -1) {
-			offset += left.length;
-			auto offset_end = str.find_s(right, offset);
-			if(offset_end != -1) {
-				output = str[offset .. offset_end];
+	if(str.length) {
+		auto i = str.find_s(left, offset);
+		if(i != -1) {
+			i += left.length;
+			auto i_end = str.find_s(right, i);
+			if(i_end != -1) {
+				output = str[i .. i_end];
 			}
 		}
 	}
@@ -996,27 +1034,98 @@ string between(string str, string left, string right) {
 	return output;
 }
 
-string before(string str, string search) {
+string before(string str, string search, int offset = 0) {
 	string output = null;
 	
-	if(str) {
-		auto offset = str.find_s(search);
-		if(offset != -1) {
-			output = str[0 .. offset];
+	if(str.length) {
+		auto i = str.find_s(search, offset);
+		if(i != -1) {
+			output = str[offset .. i];
 		}
 	}
 	
 	return output;
 }
 
-string after(string str, string search) {
+string after(string str, string search, int offset = 0) {
 	string output = null;
 	
-	if(str) {
-		auto offset = str.find_s(search);
-		if(offset != -1) {
-			output = str[offset + search.length .. $];
+	if(str.length) {
+		auto i = str.find_s(search, offset);
+		if(i != -1) {
+			output = str[i + search.length .. $];
 		}
+	}
+	
+	return output;
+}
+
+string until(string str, string search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_s(search, offset);
+		if(i != -1) {
+			output = str[offset .. i];
+		}
+	}
+	
+	return output;
+}
+
+string join(string[] str, char c) {
+	string output = null;
+	foreach(s; str) {
+		if(output.length) {
+			output ~= c;
+		}
+		
+		output ~= s; 
+	}
+	
+	return output;
+}
+
+string join(string[string] options, char keyval_separator, char item_separator) {
+	string output = null;
+	
+	foreach(key, val; options) {
+		if(output.length) {
+			output ~= item_separator;
+		}
+		
+		output ~= key~keyval_separator~val;
+		
+	}
+	
+	return output;
+}
+
+string join(string[string] options, char keyval_separator, string item_separator) {
+	string output = null;
+	
+	foreach(key, val; options) {
+		if(output.length) {
+			output ~= item_separator;
+		}
+		
+		output ~= key~keyval_separator~val;
+		
+	}
+	
+	return output;
+}
+
+string to_url(string[string] options) {
+	string output = null;
+	
+	foreach(key, val; options) {
+		if(output.length) {
+			output ~= '&';
+		}
+		
+		output ~= key~'='~val;
+		
 	}
 	
 	return output;
@@ -1093,10 +1202,10 @@ ulong dec_int(string num) {
 	ulong result;
 	if(i > 0) {
 		// bits 1-6 bits
-		result = find_c(tostring, num[--i]);
+		result = tostring.find_c(num[--i]);
 		while(i > 0) { // bits 7-36
 			result <<= 6;
-			result += find_c(tostring, num[--i]);
+			result += tostring.find_c(num[--i]);
 		}
 	}
 	
@@ -1106,7 +1215,7 @@ ulong dec_int(string num) {
 int dec_int(char num) {
 	ulong result;
 	// bits 1-6 bits
-	result = find_c(tostring, num);
+	result = tostring.find_c(num);
 	
 	
 	return cast(int)result;
