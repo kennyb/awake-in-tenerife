@@ -585,7 +585,7 @@ version(unittests) {
 		
 		string loop_text;
 		string loop_column_text;
-		string text, empty_text;
+		string text, text_utf8, empty_text;
 		string[] numbers;
 		
 		void register(inout PNL pnl, inout string[string] params) {
@@ -604,6 +604,7 @@ version(unittests) {
 			pnl.registerLoop("testloop", &testloop);
 			
 			text = "test text";
+			text_utf8 = "$³²¹";
 			empty_text = "";
 			numbers = null;
 			numbers ~= "zero";
@@ -616,6 +617,7 @@ version(unittests) {
 			numbers ~= "seven";
 			numbers ~= "eight";
 			pnl.registerString("string", &text);
+			pnl.registerString("string_utf8", &text_utf8);
 			pnl.registerString("empty_string", &empty_text);
 			pnl.registerString("loop_text", &loop_text);
 			pnl.registerString("loop_column_text", &loop_column_text);

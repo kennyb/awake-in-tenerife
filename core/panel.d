@@ -2471,24 +2471,30 @@ final class PNL {
 							p.callback(output);
 						}
 						
+						auto str_len = output.length;
+						size_t real_len = str_len;
 						if(truncate > 0) {
-							auto str_len = output.length;
-							if(str_len > truncate) {
-								if(transform) {
-									prt_html(output[0 .. truncate]);
-								} else {
-									prt(output[0 .. truncate]);
-								}
-								
-								prt("...");
-								break;
+							real_len = 0;
+							while(truncate && real_len < str_len) {
+								real_len += stride(output[real_len]);
+								truncate--;
 							}
+							
+							assert(real_len <= str_len);
+						}
+						
+						if(real_len < str_len) {
+							output = output[0 .. real_len];
 						}
 						
 						if(transform) {
 							prt_html(output);
 						} else {
 							prt(output);
+						}
+						
+						if(real_len < str_len) {
+							prt("...");
 						}
 					}
 				break;
@@ -3012,20 +3018,36 @@ unittest {
 		assert(out_tmp[0 .. out_ptr] == "7");
 	});
 	
-	UNIT("panel text #8", () {
+	UNIT("panel str truncate #1", () {
 		string t = `
-		<?interface panel:'text8' ?>
+		<?interface panel:'str_truncate_1' ?>
 		<?load TestObject ?>
 		<?=string?>
 		<?=string truncate: 6?>
 		`;
 		
 		PNL.parse_text(t);
-		assert("text8" in PNL.pnl);
-		version(testbytecode) PNL.pnl["text8"].print_bytecode;
-		PNL.pnl["text8"].render();
+		assert("str_truncate_1" in PNL.pnl);
+		version(testbytecode) PNL.pnl["str_truncate_1"].print_bytecode;
+		PNL.pnl["str_truncate_1"].render();
 		
 		assert(out_tmp[0 .. out_ptr] == "texttest t...");
+	});
+	
+	UNIT("panel str truncate #2", () {
+		string t = `
+		<?interface panel:'str_truncate_2' ?>
+		<?load TestObject ?>
+		<?=string_utf8?>
+		<?=string_utf8 truncate: 6?>
+		`;
+		
+		PNL.parse_text(t);
+		assert("str_truncate_2" in PNL.pnl);
+		version(testbytecode) PNL.pnl["str_truncate_2"].print_bytecode;
+		PNL.pnl["str_truncate_2"].render();
+		
+		assert(out_tmp[0 .. out_ptr] == "$³²¹ $...");
 	});
 	
 	UNIT("panel text #9", () {
