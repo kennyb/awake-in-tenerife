@@ -1096,6 +1096,20 @@ string before(string str, string search, int offset = 0) {
 	return output;
 }
 
+string before(string str, char search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_c(search, offset);
+		if(i != -1) {
+			output = str[offset .. i];
+		}
+	}
+	
+	return output;
+}
+
+
 string after(string str, string search, int offset = 0) {
 	string output = null;
 	
@@ -1103,6 +1117,19 @@ string after(string str, string search, int offset = 0) {
 		auto i = str.find_s(search, offset);
 		if(i != -1) {
 			output = str[i + search.length .. $];
+		}
+	}
+	
+	return output;
+}
+
+string after(string str, char search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_c(search, offset);
+		if(i != -1) {
+			output = str[++i .. $];
 		}
 	}
 	
