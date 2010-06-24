@@ -1019,6 +1019,22 @@ string cleanse_url_string(char[] text) {
 	return text2;
 }
 
+string between(string str, string left, string right, int offset = 0) {
+	string output = null;
+	if(str.length) {
+		auto i = str.find_s(left, offset);
+		if(i != -1) {
+			i += left.length;
+			auto i_end = str.find_s(right, i);
+			if(i_end != -1) {
+				output = str[i .. i_end];
+			}
+		}
+	}
+	
+	return output;
+}
+
 string between(string str, char left, string right, int offset = 0) {
 	string output = null;
 	if(str.length) {
@@ -1035,13 +1051,29 @@ string between(string str, char left, string right, int offset = 0) {
 	return output;
 }
 
-string between(string str, string left, string right, int offset = 0) {
+string between(string str, string left, char right, int offset = 0) {
 	string output = null;
 	if(str.length) {
 		auto i = str.find_s(left, offset);
 		if(i != -1) {
 			i += left.length;
-			auto i_end = str.find_s(right, i);
+			auto i_end = str.find_c(right, i);
+			if(i_end != -1) {
+				output = str[i .. i_end];
+			}
+		}
+	}
+	
+	return output;
+}
+
+string between(string str, char left, char right, int offset = 0) {
+	string output = null;
+	if(str.length) {
+		auto i = str.find_c(left, offset);
+		if(i != -1) {
+			i++;
+			auto i_end = str.find_c(right, i);
 			if(i_end != -1) {
 				output = str[i .. i_end];
 			}
@@ -1089,6 +1121,20 @@ string until(string str, string search, int offset = 0) {
 	
 	return output;
 }
+
+string until(string str, char search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_c(search, offset);
+		if(i != -1) {
+			output = str[offset .. i];
+		}
+	}
+	
+	return output;
+}
+
 
 string join(string[] str, char c) {
 	string output = null;
