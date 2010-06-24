@@ -113,9 +113,10 @@ double microtime() {
 		(tv.tv_usec * (1/(1000000 / cast(double)CLOCKS_PER_SEC)));
 }
 
-int parseJSTimeStr(string time) {
+int parse_time_str(string time, string format = "%a, %d %b %Y %H:%M:%S") {
 	tm t;
-	string time0 = time~\0;
+	string time0 = time~'\0';
+	string format0 = format~'\0';
 	
 	auto plus = time.find_c('+');
 	int tz_offset;
@@ -132,12 +133,12 @@ int parseJSTimeStr(string time) {
 		tz_offset = (tz_offset / 100) * 3600;
 	}
 	
-	strptime(time0.ptr, "%a, %d %b %Y %H:%M:%S", &t);
+	strptime(time0.ptr, format0.ptr, &t);
 	return mktime(&t) - tz_offset;
 }
 
 unittest {
-	assert(parseJSTimeStr("Sat, 19 Jun 2010 23:57:00 +0200") == 1276984620);
+	assert(parse_time_str("Sat, 19 Jun 2010 23:57:00 +0200") == 1276984620);
 }
 
 string html_entities(string str, bool escape = false) {
