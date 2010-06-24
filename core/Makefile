@@ -7,7 +7,7 @@ LINKOBJ=$(COREOBJ)
 
 # this needs to be split to ldc / dmd when I actually support dmd
 TANGO_FLAGS=-release
-TANGO_REVISION=5479
+TANGO_REVISION=5486
 ifeq ($(M32),true)
 	TANGO_BUILD=./build/bin/linux32/bob
 else
@@ -17,19 +17,6 @@ endif
 
 CFLAGS=
 DFLAGS=-I../common -nodefaultlib
-
-ifeq ($(DMD),ldc)
-	LD=llvm-ld
-	CC=llvm-gcc --emit-llvm
-	O=-of=obj/
-	LDO=-o=
-else
-	LD=gcc -m32
-	CC=gcc -m32
-	O=-odobj -of
-	LDO=-o
-endif
-
 
 ifeq ($(BYTECODE),true)
 	ifeq ($(DMD),ldc)
@@ -48,9 +35,13 @@ ifeq ($(DATATEST),true)
 endif
 
 ifeq ($(DMD),ldc)
+	LD=llvm-ld
+	CC=llvm-gcc --emit-llvm -v
+	O=-of=obj/
+	LDO=-o=
+	
 	DFLAGS+=\
 		-singleobj \
-		-output-bc \
 		-relocation-model=pic \
 		-I../common/tango-svn/tango/core/rt/compiler/ldc/ \
 		-I../common/tango-svn/ \
@@ -78,6 +69,11 @@ ifeq ($(DMD),ldc)
 		EXTRA+= -m64
 	endif
 else
+	LD=gcc -m32
+	CC=gcc -m32
+	O=-odobj -of
+	LDO=-o
+	
 	DFLAGS+=-I../common
 	LDFLAGS+=-Xlinker
 	#-melf_i386 --format elf32-i386
@@ -133,6 +129,7 @@ ifeq ($(MAKECMDGOALS),release)
 		-scalar-evolution \
 		-scalarrepl \
 		-sccp \
+		-strip-nondebug \
 		-verify-dom-info \
 		$(LDOPT)
 	
@@ -151,12 +148,12 @@ else
 	# -Wall -Wextra -Wno-unreachable-code
 #	CFLAGS+=-g -fno-bounds-check
 	CFLAGS+=-g
-	DFLAGS+= -g $(EXTRA)
+	DFLAGS+= -g -output-bc $(EXTRA)
 	ifeq ($(DMD),ldc)
 		#-annotate -op -D
-		DFLAGS+= -O0 -v-cg -noverify
+		DFLAGS+= -v-cg -noverify
 		DFLAGS+= -d-debug -d-version=notrelease -d-version=debug
-		LDFLAGS+= -disable-opt
+		LDFLAGS+= -disable-opt -disable-inlining -disable-internalize
 	else
 		DFLAGS+= -debug -version=notrelease -version=debug
 	endif
@@ -202,7 +199,7 @@ prepare :
 	mkdir -p obj
 	rm -f core
 
-release : prepare $(OBJS)
+release : prepare $(FILES)
 	$(DMD) $(DFLAGS) -c $(FILES) $(O)core.bc
 	$(LD) $(LDFLAGS) $(LINKOBJ) $(LIBS) $(LDO)$(OUT)
 	

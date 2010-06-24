@@ -1019,6 +1019,22 @@ string cleanse_url_string(char[] text) {
 	return text2;
 }
 
+string between(string str, char left, string right, int offset = 0) {
+	string output = null;
+	if(str.length) {
+		auto i = str.find_c(left, offset);
+		if(i != -1) {
+			i++;
+			auto i_end = str.find_s(right, i);
+			if(i_end != -1) {
+				output = str[i .. i_end];
+			}
+		}
+	}
+	
+	return output;
+}
+
 string between(string str, string left, string right, int offset = 0) {
 	string output = null;
 	if(str.length) {
