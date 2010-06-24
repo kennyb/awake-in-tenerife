@@ -101,7 +101,7 @@ class HttpRequest {
 		string[] curl_args;
 		status = FAILURE;
 		string header_file = filename ~ ".header";
-		string cookies_file = filename ~ ".cookies";
+		string cookies_file = "/tmp/http_request."~host~".cookies";
 		
 		string[] curl_cmd;// = `curl --silent -o ` ~ filename;
 		curl_cmd ~= "curl";
@@ -157,10 +157,10 @@ class HttpRequest {
 			//File.set(cookies_file, "");
 			noticeln("exec: ", curl_cmd.join(' '));
 			auto p_curl = new Process(curl_cmd, null);
-			//scope(exit) delete p_curl;
 			
 			p_curl.execute();
 			p_curl.wait;
+			delete p_curl;
 			
 			
 		//} catch(Exception e) {
@@ -175,13 +175,10 @@ class HttpRequest {
 		//output_header = trim(cast(string) File.get(filename~".header"));
 		output = cast(string) File.get(filename);
 		
-		//return parse(tidy_it);
-		
 		output_header = null;
 		error = null;
 		
 		auto loc = find_s(output, "\r\n\r\n");
-		noticeln("header: ", loc);
 		if(loc != -1) {
 			loc += 4;
 			if(output.length > loc) {
@@ -244,14 +241,16 @@ class HttpRequest {
 					output = output[loc .. $];
 				}
 				
+				File.set(filename, output);
+				
 				if(tidy_it) {
 					noticeln("tidying... ", output[0 .. 50]);
-					File.set(filename ~ ".tidy", output);
-					auto p_tidy = new Process(`tidy -asxhtml -b -utf8 -m ` ~ filename, null);
-					//scope(exit) delete p_curl;
+					File.set(filename ~ ".tidy", output.replace_cc('\n', ' ').remove_c('\r'));
+					auto p_tidy = new Process(`tidy -w 10000 -asxhtml -n -b -utf8 -m ` ~ filename ~ ".tidy", null);
+					scope(exit) delete p_tidy;
 					p_tidy.execute();
 					p_tidy.wait;
-					output = cast(string) File.get(filename ~ ".tidy");
+					output = (cast(string) File.get(filename ~ ".tidy")).replace_cc('\n', ' ').remove_c('\r');
 				}
 				
 				noticeln("output: ", output.length);
