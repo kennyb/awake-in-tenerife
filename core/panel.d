@@ -2513,7 +2513,7 @@ final class PNL {
 							//noticeln("high: ", truncate_high);
 							//noticeln("low: ", truncate_low);
 							
-							string formatted = "0";
+							string formatted = f[0 .. point];
 							if(truncate_high) {
 								size_t high_start = 0;
 								if(truncate_high < point) {
@@ -2528,14 +2528,22 @@ final class PNL {
 							
 							if(truncate_low) {
 								size_t low_end = point + 1 + truncate_low;
+								auto num_zeros = 0;
 								if(low_end > f.length) {
+									num_zeros = low_end - f.length;
 									low_end = f.length;
+									if(num_zeros > 10) {
+										num_zeros = 10;
+									}
 								}
 								
 								//noticeln("low_start: ", point+1);
 								//noticeln("low_end: ", low_end);
 								
 								formatted ~= (is_comma ? ',' : '.') ~ f[point+1 .. low_end];
+								if(num_zeros) {
+									formatted ~= "0000000000"[0 .. num_zeros];
+								}
 							}
 							
 							f = formatted;
