@@ -248,7 +248,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		string find_obj_structure = obj_structure;
 		bool find_obj_version(FilePath fp) {
 			string filename = fp.toString();
-			size_t offset = find_c(filename, '@');
+			size_t offset = find(filename, '@');
 			if(offset != -1) {
 				string structure_string = cast(string)File.get(filename);
 				if(structure_string == obj_structure) {
@@ -881,7 +881,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 									make_query(obj_b, val);
 									bs.append(label, obj_b);
 									break;
-								} else if(find_c(label, '.') != -1) {
+								} else if(find(label, '.') != -1) {
 									//TODO(0.2) - toDouble function
 									bs.append(label, toFloat(val));
 									break;
@@ -1022,7 +1022,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 								` ~ (export_template ? `
 								else if(v1 == '$' && v2 == '$') {
 										// template variable
-										auto scope_offset = find_c(val, ':', 2);
+										auto scope_offset = find(val, ':', 2);
 										if(scope_offset != -1) {
 											uint type = toUint(val[1 .. scope_offset]);
 											uint dyn_var = toUint(val[++scope_offset .. $-1]);
@@ -1050,7 +1050,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 										break;
 								}
 								` : ``) ~ `
-								else if(find_c(label, '.') != -1) {
+								else if(find(label, '.') != -1) {
 									//TODO(0.2) - toDouble function
 									bs.append(label, toFloat(val));
 									break;

@@ -98,7 +98,7 @@ import shared;
 		prerender ~= 
 		` onclick="this.disabled = 'disabled'" value="` ~ (value.length && !ptr_value ?  value : default_text) ~ `"/>`;
 		
-		value_loc = find_s(prerender, ` value="`)+8;
+		value_loc = find(prerender, ` value="`)+8;
 		value_end_loc = value_loc + default_text.length;
 	}
 	
@@ -173,8 +173,8 @@ class TemplateTArea : TemplateTBox {
 			opts["size_limit"] = "2600";
 		}
 		
-		prerender = replace_ss(prerender, `<input type="text"`, "<textarea");
-		prerender = replace_ss(prerender, `<input type="password"`, "<textarea");
+		prerender = replace(prerender, `<input type="text"`, "<textarea");
+		prerender = replace(prerender, `<input type="password"`, "<textarea");
 		
 		prerender ~= ` rows="` ~ rows ~ `" cols="` ~ cols ~ `" >`;
 		value_loc = prerender.length;
@@ -432,7 +432,7 @@ class TemplateTBox {
 		
 		prerender ~= `" value="` ~ (value.length && !ptr_value ?  value : default_text) ~ `" />`;
 		
-		value_loc = find_s(prerender, ` value="`)+8;
+		value_loc = find(prerender, ` value="`)+8;
 		value_end_loc = value_loc + default_text.length;
 	}
 	

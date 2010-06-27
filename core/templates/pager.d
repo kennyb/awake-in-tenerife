@@ -87,7 +87,7 @@ class TemplatePager : TemplateInterface {
 			}
 		}
 		
-		auto args_loc = find_s(params, "args:");
+		auto args_loc = find(params, "args:");
 		if(args_loc != -1) {
 			size_t i = args_loc;
 			while(i < params.length && params[i++] != '{') { 
@@ -115,9 +115,9 @@ class TemplatePager : TemplateInterface {
 			link.render();
 			string link = out_tmp[cur_ptr .. out_ptr].dup;
 			out_ptr = cur_ptr;
-			auto loc1 = find_s(link, "!!page!!");
+			auto loc1 = find(link, "!!page!!");
 			auto loc2 = loc1+8;
-			auto loc3 = find_s(link[loc2 .. $], "!!page!!")+loc2;
+			auto loc3 = find(link[loc2 .. $], "!!page!!")+loc2;
 			auto loc4 = loc3+8;
 			auto len = link.length;
 			

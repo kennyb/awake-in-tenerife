@@ -60,7 +60,7 @@ class HttpRequest {
 	
 	this(string host, string header = null) {
 		this.host = host;
-		this.filename = "/tmp/http_request." ~ rand_str(40).remove_c('-');
+		this.filename = "/tmp/http_request." ~ rand_str(40).remove('-');
 		if(header.length) {
 			req_header = trim(header) ~ "\r\n\r\n";
 		} else {
@@ -123,16 +123,16 @@ class HttpRequest {
 		
 		ptrdiff_t nl;
 		ptrdiff_t last = 0;
-		while((nl = req_header.find_s("\r\n", last)) != -1) {
+		while((nl = req_header.find("\r\n", last)) != -1) {
 			auto h = req_header[last .. nl].trim();
 			last = nl+2;
-			if(h.length && h.find_s("Cookie: ") != 0) {
+			if(h.length && h.find("Cookie: ") != 0) {
 				curl_cmd ~= "-H";
 				curl_cmd ~= '"'~h~'"';
 			}
 		}
 		
-		auto i_existing_cookie = req_header.find_s("\r\nCookie: ");
+		auto i_existing_cookie = req_header.find("\r\nCookie: ");
 		if(i_existing_cookie != -1) {
 			auto existing_cookie = req_header.between("\r\nCookie: ", "\r\n", i_existing_cookie).trim();
 			if(existing_cookie.length) {
@@ -178,7 +178,7 @@ class HttpRequest {
 		output_header = null;
 		error = null;
 		
-		auto loc = find_s(output, "\r\n\r\n");
+		auto loc = find(output, "\r\n\r\n");
 		if(loc != -1) {
 			loc += 4;
 			if(output.length > loc) {
@@ -189,9 +189,9 @@ class HttpRequest {
 				ptrdiff_t i_cookie;
 				ptrdiff_t i_cookie_end;
 				while(
-						(i_cookie = output_header.find_s("\r\nSet-Cookie: ", i_last)) != -1 &&
+						(i_cookie = output_header.find("\r\nSet-Cookie: ", i_last)) != -1 &&
 						(i_cookie += "\r\nSet-Cookie: ".length) < output_header.length &&
-						(i_cookie_end = output_header.find_s("; ", i_cookie)) != -1
+						(i_cookie_end = output_header.find("; ", i_cookie)) != -1
 					) {
 					cookie.parse_cookie(output_header[i_cookie .. i_cookie_end]);
 					i_last = i_cookie_end;
@@ -202,12 +202,12 @@ class HttpRequest {
 					cookie.parse_cookie(set_cookie);
 					set_cookie = cookie.to_url();
 					
-					auto existing_cookie = req_header.find_s("\r\nCookie: ");
+					auto existing_cookie = req_header.find("\r\nCookie: ");
 					if(existing_cookie == -1) {
 						req_header ~= "\r\nCookie: " ~ set_cookie;
 					} else {
 						existing_cookie += "\r\nCookie: ".length;
-						auto end_cookie = req_header.find_s("\r\n", existing_cookie);
+						auto end_cookie = req_header.find("\r\n", existing_cookie);
 						if(end_cookie != -1) {
 							req_header = req_header[0 .. existing_cookie] ~ set_cookie ~ req_header[end_cookie .. $];
 						}
@@ -234,7 +234,7 @@ class HttpRequest {
 				}
 				+/
 				
-				if(find_s(output_header, "Content-Encoding: gzip") == -1) {
+				if(find(output_header, "Content-Encoding: gzip") == -1) {
 					output = output[loc .. $];
 				} else {
 					stdoutln("cannot uncompress gzip!");
@@ -245,12 +245,12 @@ class HttpRequest {
 				
 				if(tidy_it) {
 					noticeln("tidying... ", output[0 .. 50]);
-					File.set(filename ~ ".tidy", output.replace_cc('\n', ' ').remove_c('\r'));
+					File.set(filename ~ ".tidy", output.replace('\n', ' ').remove('\r'));
 					auto p_tidy = new Process(`tidy -w 10000 -asxhtml -n -b -utf8 -m ` ~ filename ~ ".tidy", null);
 					scope(exit) delete p_tidy;
 					p_tidy.execute();
 					p_tidy.wait;
-					output = (cast(string) File.get(filename ~ ".tidy")).replace_cc('\n', ' ').remove_c('\r');
+					output = (cast(string) File.get(filename ~ ".tidy")).replace('\n', ' ').remove('\r');
 				}
 				
 				noticeln("output: ", output.length);

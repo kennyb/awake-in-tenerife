@@ -72,7 +72,7 @@ class TemplateLink {
 			if((*val)[0] == '{') {
 				panels.parse_options(*val);
 			} else {
-				size_t loc = find_c(*val, ':');
+				size_t loc = find(*val, ':');
 				if(loc != -1) {
 					panels[(*val)[0 .. loc]] = (*val)[loc+1 .. $];
 				}
@@ -656,8 +656,8 @@ class TemplateForm : TemplateLink {
 			custom_class = *val;
 		}
 		
-		size_t href_loc = find_s(link, `href="`)+6;
-		size_t end_href_loc = find_c(link, '"', href_loc); 
+		size_t href_loc = find(link, `href="`)+6;
+		size_t end_href_loc = find(link, '"', href_loc); 
 		string action = link[href_loc .. end_href_loc];
 		
 		auto this_variable = variable.dup;
@@ -670,7 +670,7 @@ class TemplateForm : TemplateLink {
 		var_type = null;
 		var_loc = null;
 		
-		bool multipart = (find_s(params, "multipart") != -1 ? true : false);
+		bool multipart = (find(params, "multipart") != -1 ? true : false);
 		link = `<form method="post"` ~ (multipart ? ` enctype="multipart/form-data"` : null) ~  ` action="`;
 		
 		

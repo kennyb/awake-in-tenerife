@@ -383,10 +383,10 @@ final class PNL {
 	private static void parse_idioma(string filename) {
 		auto content = cast(string)File.get(filename);
 		if(content.length && filename[$-4 .. $] == ".txt") {
-			auto bar_pos = findr_c(filename, '/'); // cheap hack, because findr will return -1 if it's not found
+			auto bar_pos = findr(filename, '/'); // cheap hack, because findr will return -1 if it's not found
 			string file_lang = filename[++bar_pos .. $-4];
 			
-			content = replace_cc(content, '\n', ' ');
+			content = replace(content, '\n', ' ');
 			string[string] text;
 			text.parse_options(content);
 			
@@ -429,12 +429,12 @@ final class PNL {
 			char[] new_text = " ";
 			new_text.length = len;
 			
-			auto first_line = find_c(t, '\n');
-			auto first_cr = find_c(t, '\r');
+			auto first_line = find(t, '\n');
+			auto first_cr = find(t, '\r');
 			if(first_cr != -1 && first_cr < first_line) {
-				t = t[0 .. first_cr] ~ "\n<error>please do not save in file formats other than linux file format (newlines \\n)</error>" ~ replace_cc(t[first_line .. $], '\r', '\n');
+				t = t[0 .. first_cr] ~ "\n<error>please do not save in file formats other than linux file format (newlines \\n)</error>" ~ replace(t[first_line .. $], '\r', '\n');
 				debug errorln("NEWLINE ERROR '", t[0 .. 200]);
-				first_line = find_c(t, '\n');
+				first_line = find(t, '\n');
 			}
 			
 			if(first_line != -1 && first_line > 20) { //<%interface ...%> is the minimum
@@ -763,7 +763,7 @@ final class PNL {
 					
 					auto inline_start = find_noquote(new_text, "<%call");
 					while(inline_start != -1) {
-						auto inline_end = find_s(new_text, "%>", inline_start);
+						auto inline_end = find(new_text, "%>", inline_start);
 						if(inline_end != -1) {
 							inside = new_text[inline_start+6 .. inline_end];
 							if(inside.length) {
@@ -781,8 +781,8 @@ final class PNL {
 											string[string] args;
 											args.parse_options(*val);
 											foreach(this_val, real_val; options) {
-												panel_txt = replace_ss(panel_txt, "$this." ~ this_val, real_val);
-												panel_txt = replace_ss(panel_txt, "this." ~ this_val, real_val);
+												panel_txt = replace(panel_txt, "$this." ~ this_val, real_val);
+												panel_txt = replace(panel_txt, "this." ~ this_val, real_val);
 											}
 										}
 										
@@ -801,7 +801,7 @@ final class PNL {
 						break;
 					}
 					
-					inline_start = find_s(new_text, "{{=");
+					inline_start = find(new_text, "{{=");
 					while(inline_start != -1) {
 						auto inline_end = find_noquote(new_text, "}}", inline_start);
 						if(inline_end != -1) {
@@ -817,7 +817,7 @@ final class PNL {
 							string* ptr_text = lang_index in lang["en"];
 							
 							new_text = new_text[0 .. inline_start] ~ (ptr_text ? *ptr_text : "!!untranslated text: '" ~ lang_index ~ '\'') ~ new_text[inline_end+2 .. $];
-							inline_start = find_s(new_text, "{{=", inline_start);
+							inline_start = find(new_text, "{{=", inline_start);
 						} else {
 							inline_start = -1;
 						}
@@ -2162,7 +2162,7 @@ final class PNL {
 						}
 					}
 				} else {
-					size_t pos = find_c(inside, ' ');
+					size_t pos = find(inside, ' ');
 					string[string] opts;
 					string params;
 					if(pos != -1) {
@@ -2214,8 +2214,8 @@ final class PNL {
 								val = "truncate" in opts;
 								if(val) {
 									string truncate = *val;
-									auto point = find_c(truncate, '.');
-									auto comma = find_c(truncate, ',');
+									auto point = find(truncate, '.');
+									auto comma = find(truncate, ',');
 									if(point == -1 && comma != -1) {
 										point = comma;
 									}
@@ -2502,7 +2502,7 @@ final class PNL {
 					version(renderingbytecode) noticeln(cur, ": (float) '", *cast(float*)p.ptr, "'");
 					string f = Float.toString(*cast(float*)p.ptr);
 					if(p.truncate) {
-						auto point = f.find_c('.');
+						auto point = f.find('.');
 						if(point != -1) {
 							bool is_comma = p.truncate < 0;
 							int truncate = (p.truncate < 0 ? ~p.truncate : p.truncate);
@@ -2834,16 +2834,16 @@ string remove_comments(string str) {
 string css_optimizer(string str) {
 	//TODO! make this a for-loop
 	str = clean_text(str);
-	str = replace_sc(str, " {", '{');
-	str = replace_sc(str, "{ ", '{');
-	str = replace_sc(str, " }", '}');
-	str = replace_sc(str, "} ", '}');
-	str = replace_sc(str, ", ", ',');
-	str = replace_sc(str, ": ", ':');
-	str = replace_sc(str, "; ", ';');
-	str = replace_ss(str, ":0px", ":0");
-	str = replace_ss(str, " 0px", " 0");
-	str = replace_sc(str, ";}", '}');
+	str = replace(str, " {", '{');
+	str = replace(str, "{ ", '{');
+	str = replace(str, " }", '}');
+	str = replace(str, "} ", '}');
+	str = replace(str, ", ", ',');
+	str = replace(str, ": ", ':');
+	str = replace(str, "; ", ';');
+	str = replace(str, ":0px", ":0");
+	str = replace(str, " 0px", " 0");
+	str = replace(str, ";}", '}');
 	
 	return str;
 }
@@ -2852,59 +2852,59 @@ string js_optimizer(string str) {
 	return str;
 	/+
 	//TODO! make this function a for-loop
-	str = remove_s(str, "\\\n");
+	str = remove(str, "\\\n");
 	str = clean_text(str);
 	
 	
 	//TODO!! - if there are any console.log then remove them immediately
 	//OPTIMIZE!! - if there is only one expression inside of { }, then erase the { }
 	//TODO!! - implement JS lint
-	str = replace_sc(str, " (", '(');
-	str = replace_sc(str, ") ", ')');
-	str = replace_sc(str, " {", '{');
-	str = replace_sc(str, "{ ", '{');
-	str = replace_sc(str, " }", '}');
-	str = replace_sc(str, "} ", '}');
-	str = replace_sc(str, "; ", ';');
-	str = replace_sc(str, ": ", ':');
-	str = replace_sc(str, ", ", ',');
-	str = replace_sc(str, ",}", '}');
-	str = replace_sc(str, ",]", ']');
-	//str = replace_sc(str, ";;", ';'); // this can break for(;;) statement -- and it's really unlikely to have this
+	str = replace(str, " (", '(');
+	str = replace(str, ") ", ')');
+	str = replace(str, " {", '{');
+	str = replace(str, "{ ", '{');
+	str = replace(str, " }", '}');
+	str = replace(str, "} ", '}');
+	str = replace(str, "; ", ';');
+	str = replace(str, ": ", ':');
+	str = replace(str, ", ", ',');
+	str = replace(str, ",}", '}');
+	str = replace(str, ",]", ']');
+	//str = replace(str, ";;", ';'); // this can break for(;;) statement -- and it's really unlikely to have this
 	
-	str = replace_sc(str, " =", '=');
-	str = replace_sc(str, " !", '!');
-	str = replace_sc(str, " ?", '?');
-	str = replace_sc(str, " +", '+');
-	str = replace_sc(str, " -", '-');
-	str = replace_sc(str, " *", '*');
-	str = replace_sc(str, " /", '/');
-	str = replace_sc(str, " >", '>');
-	str = replace_sc(str, " <", '<');
-	str = replace_sc(str, " &", '&');
-	str = replace_sc(str, " |", '|');
+	str = replace(str, " =", '=');
+	str = replace(str, " !", '!');
+	str = replace(str, " ?", '?');
+	str = replace(str, " +", '+');
+	str = replace(str, " -", '-');
+	str = replace(str, " *", '*');
+	str = replace(str, " /", '/');
+	str = replace(str, " >", '>');
+	str = replace(str, " <", '<');
+	str = replace(str, " &", '&');
+	str = replace(str, " |", '|');
 	
-	str = replace_sc(str, "= ", '=');
-	str = replace_sc(str, "! ", '!');
-	str = replace_sc(str, "? ", '?');
-	str = replace_sc(str, "+ ", '+');
-	str = replace_sc(str, "- ", '-');
-	str = replace_sc(str, "* ", '*');
-	str = replace_sc(str, "/ ", '/');
-	str = replace_sc(str, "> ", '>');
-	str = replace_sc(str, "< ", '<');
-	str = replace_sc(str, "& ", '&');
-	str = replace_sc(str, "| ", '|');
+	str = replace(str, "= ", '=');
+	str = replace(str, "! ", '!');
+	str = replace(str, "? ", '?');
+	str = replace(str, "+ ", '+');
+	str = replace(str, "- ", '-');
+	str = replace(str, "* ", '*');
+	str = replace(str, "/ ", '/');
+	str = replace(str, "> ", '>');
+	str = replace(str, "< ", '<');
+	str = replace(str, "& ", '&');
+	str = replace(str, "| ", '|');
 	
 	// for reason there is a small bug with a ; on the end of the line and it messing up, if I put this after the next statements
 	if(str[$-1] == ';') {
 		str.length = str.length-1;
 	}
 	
-	str = replace_sc(str, ";}", '}');
-	str = remove_s(str, `\\\n`);
-	str = remove_s(str, `"+"`);
-	str = remove_s(str, "'+'");
+	str = replace(str, ";}", '}');
+	str = remove(str, `\\\n`);
+	str = remove(str, `"+"`);
+	str = remove(str, "'+'");
 	
 	return str;
 	+/

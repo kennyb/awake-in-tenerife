@@ -118,12 +118,12 @@ int parse_time_str(string time, string format = "%a, %d %b %Y %H:%M:%S") {
 	string time0 = time~'\0';
 	string format0 = format~'\0';
 	
-	auto plus = time.find_c('+');
+	auto plus = time.find('+');
 	int tz_offset;
 	if(plus != -1) {
 		tz_offset = toInt(time[++plus .. $]);
 	} else {
-		auto minus = time.find_c('-');
+		auto minus = time.find('-');
 		if(minus != -1) {
 			tz_offset = -toInt(time[++minus .. $]);
 		}
@@ -142,15 +142,15 @@ unittest {
 }
 
 string html_entities(string str, bool escape = false) {
-	str = replace_cs(str, '<', "&lt;");
-	str = replace_cs(str, '>', "&gt;");
-	str = replace_ss(str, "\r\n", "<br />");
-	str = replace_cs(str, '\r', "<br />");
-	str = replace_cs(str, '\n', "<br />");
+	str = replace(str, '<', "&lt;");
+	str = replace(str, '>', "&gt;");
+	str = replace(str, "\r\n", "<br />");
+	str = replace(str, '\r', "<br />");
+	str = replace(str, '\n', "<br />");
 	
 	if(escape) {
-		str = replace_cs(str, '\'', "\\'");
-		str = replace_cs(str, '"', "\\\"");
+		str = replace(str, '\'', "\\'");
+		str = replace(str, '"', "\\\"");
 	}
 	
 	return str;
@@ -654,7 +654,7 @@ unittest {
 
 
 // text functions, re-implemented to be binary safe and not throw exceptions
-ptrdiff_t find_c(string str, char f, size_t offset = 0) {
+ptrdiff_t find(string str, char f, size_t offset = 0) {
 	auto len = str.length;
 	if(offset >= 0 && offset < len) {
 		for(size_t i = offset; i < len; i++) {
@@ -667,7 +667,7 @@ ptrdiff_t find_c(string str, char f, size_t offset = 0) {
 	return -1;
 }
 
-ptrdiff_t find_s(string str, string f, int offset = 0) {
+ptrdiff_t find(string str, string f, int offset = 0) {
 	auto len = str.length;
 	auto flen = f.length;
 	
@@ -687,7 +687,7 @@ restart:
 	return -1;
 }
 
-ptrdiff_t findr_c(string str, char f, int offset = 0xb00bb00b) {
+ptrdiff_t findr(string str, char f, int offset = 0xb00bb00b) {
 	auto len = cast(int) str.length - 1;
 	if(offset == 0xb00bb00b || offset > len) {
 		offset = len;
@@ -704,7 +704,7 @@ ptrdiff_t findr_c(string str, char f, int offset = 0xb00bb00b) {
 	return -1;
 }
 
-ptrdiff_t findr_s(string str, string f, int offset = 0xb00bb00b) {
+ptrdiff_t findr(string str, string f, int offset = 0xb00bb00b) {
 	auto len = str.length - 1;
 	auto flen = f.length;
 	if(offset == 0xb00bb00b || offset > len) {
@@ -729,7 +729,7 @@ restart:
 	return -1;
 }
 
-string replace_cc(string str, char f, char r) {
+string replace(string str, char f, char r) {
 	string output = null;
 	auto len = str.length;
 	for(uint i = 0; i < len; i++) {
@@ -745,7 +745,7 @@ string replace_cc(string str, char f, char r) {
 	return output.length ? output : str;
 }
 
-string replace_cs(string str, char f, string r) {
+string replace(string str, char f, string r) {
 	string output;
 	auto len = str.length;
 	output.length = (len * r.length) >> 2;
@@ -764,7 +764,7 @@ string replace_cs(string str, char f, string r) {
 	return output;
 }
 
-string replace_ss(string str, string f, string r) {
+string replace(string str, string f, string r) {
 	string output;
 	//OPTIMIZE!! - if the string sizes are the same, this can be optimized
 	auto len = str.length;
@@ -775,7 +775,7 @@ string replace_ss(string str, string f, string r) {
 	
 restart:
 	while(i < len) {
-		//OPTIMIZE!! - if you save the last index, an operation can be done like in replace_sc
+		//OPTIMIZE!! - if you save the last index, an operation can be done like in replace
 		for(size_t j = i, k = 0; j < len && k < flen; j++, k++) {
 			if(str[j] != f[k]) {
 				output ~= str[i++];
@@ -790,7 +790,7 @@ restart:
 	return output;
 }
 
-string replace_sc(string str, string f, char r) {
+string replace(string str, string f, char r) {
 	string output = null;
 	auto len = str.length;
 	auto flen = f.length;
@@ -800,7 +800,7 @@ string replace_sc(string str, string f, char r) {
 	size_t j;
 	
 restart:
-	while((j = str.find_s(f, i)) != -1) {
+	while((j = str.find(f, i)) != -1) {
 		output ~= str[i .. j] ~  r;
 		i = j + flen;
 	}
@@ -816,7 +816,7 @@ restart:
 	}
 }
 
-string remove_c(string str, char f) {
+string remove(string str, char f) {
 	string output;
 	auto len = str.length;
 	output.length = len;
@@ -826,7 +826,7 @@ string remove_c(string str, char f) {
 	
 restart:
 	while(true) {
-		j = str.find_c(f, i);
+		j = str.find(f, i);
 		if(j != -1) {
 			output ~= str[i .. j];
 			i = ++j;
@@ -842,7 +842,7 @@ restart:
 	return output;
 }
 
-string remove_s(string str, string f) {
+string remove(string str, string f) {
 	string output;
 	auto len = str.length;
 	auto flen = f.length;
@@ -853,7 +853,7 @@ string remove_s(string str, string f) {
 	
 restart:
 	while(true) {
-		j = str.find_s(f, i);
+		j = str.find(f, i);
 		if(j != -1) {
 			output ~= str[i .. j];
 			i = j + flen;
@@ -993,7 +993,7 @@ ptrdiff_t find_noquote(string s, string needle, int offset = 0) {
 }
 
 string cleanse_url_string(char[] text) {
-	char[] text2 = cast(char[])replace_sc(text, "%0D%0A", '\n');
+	char[] text2 = cast(char[])replace(text, "%0D%0A", '\n');
 	size_t len = text2.length;
 	
 	size_t j = 0;
@@ -1022,10 +1022,10 @@ string cleanse_url_string(char[] text) {
 string between(string str, string left, string right, int offset = 0) {
 	string output = null;
 	if(str.length) {
-		auto i = str.find_s(left, offset);
+		auto i = str.find(left, offset);
 		if(i != -1) {
 			i += left.length;
-			auto i_end = str.find_s(right, i);
+			auto i_end = str.find(right, i);
 			if(i_end != -1) {
 				output = str[i .. i_end];
 			}
@@ -1038,10 +1038,10 @@ string between(string str, string left, string right, int offset = 0) {
 string between(string str, char left, string right, int offset = 0) {
 	string output = null;
 	if(str.length) {
-		auto i = str.find_c(left, offset);
+		auto i = str.find(left, offset);
 		if(i != -1) {
 			i++;
-			auto i_end = str.find_s(right, i);
+			auto i_end = str.find(right, i);
 			if(i_end != -1) {
 				output = str[i .. i_end];
 			}
@@ -1054,10 +1054,10 @@ string between(string str, char left, string right, int offset = 0) {
 string between(string str, string left, char right, int offset = 0) {
 	string output = null;
 	if(str.length) {
-		auto i = str.find_s(left, offset);
+		auto i = str.find(left, offset);
 		if(i != -1) {
 			i += left.length;
-			auto i_end = str.find_c(right, i);
+			auto i_end = str.find(right, i);
 			if(i_end != -1) {
 				output = str[i .. i_end];
 			}
@@ -1070,10 +1070,10 @@ string between(string str, string left, char right, int offset = 0) {
 string between(string str, char left, char right, int offset = 0) {
 	string output = null;
 	if(str.length) {
-		auto i = str.find_c(left, offset);
+		auto i = str.find(left, offset);
 		if(i != -1) {
 			i++;
-			auto i_end = str.find_c(right, i);
+			auto i_end = str.find(right, i);
 			if(i_end != -1) {
 				output = str[i .. i_end];
 			}
@@ -1087,7 +1087,7 @@ string before(string str, string search, int offset = 0) {
 	string output = null;
 	
 	if(str.length) {
-		auto i = str.find_s(search, offset);
+		auto i = str.find(search, offset);
 		if(i != -1) {
 			output = str[offset .. i];
 		}
@@ -1100,7 +1100,7 @@ string before(string str, char search, int offset = 0) {
 	string output = null;
 	
 	if(str.length) {
-		auto i = str.find_c(search, offset);
+		auto i = str.find(search, offset);
 		if(i != -1) {
 			output = str[offset .. i];
 		}
@@ -1114,7 +1114,7 @@ string after(string str, string search, int offset = 0) {
 	string output = null;
 	
 	if(str.length) {
-		auto i = str.find_s(search, offset);
+		auto i = str.find(search, offset);
 		if(i != -1) {
 			output = str[i + search.length .. $];
 		}
@@ -1127,7 +1127,7 @@ string after(string str, char search, int offset = 0) {
 	string output = null;
 	
 	if(str.length) {
-		auto i = str.find_c(search, offset);
+		auto i = str.find(search, offset);
 		if(i != -1) {
 			output = str[++i .. $];
 		}
@@ -1140,7 +1140,7 @@ string until(string str, string search, int offset = 0) {
 	string output = null;
 	
 	if(str.length) {
-		auto i = str.find_s(search, offset);
+		auto i = str.find(search, offset);
 		if(i != -1) {
 			output = str[offset .. i];
 		}
@@ -1153,7 +1153,7 @@ string until(string str, char search, int offset = 0) {
 	string output = null;
 	
 	if(str.length) {
-		auto i = str.find_c(search, offset);
+		auto i = str.find(search, offset);
 		if(i != -1) {
 			output = str[offset .. i];
 		}
@@ -1292,10 +1292,10 @@ ulong dec_int(string num) {
 	ulong result;
 	if(i > 0) {
 		// bits 1-6 bits
-		result = tostring.find_c(num[--i]);
+		result = tostring.find(num[--i]);
 		while(i > 0) { // bits 7-36
 			result <<= 6;
-			result += tostring.find_c(num[--i]);
+			result += tostring.find(num[--i]);
 		}
 	}
 	
@@ -1305,7 +1305,7 @@ ulong dec_int(string num) {
 int dec_int(char num) {
 	ulong result;
 	// bits 1-6 bits
-	result = tostring.find_c(num);
+	result = tostring.find(num);
 	
 	
 	return cast(int)result;

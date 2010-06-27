@@ -807,20 +807,20 @@ class Core {
 		if(val) {
 			string z = *val;
 			size_t param_start = 0;
-			size_t cloc = find_c(z, ',');
+			size_t cloc = find(z, ',');
 			do {
 				if(cloc == -1) {
 					cloc = z.length;
 				}
 				
 				string each = z[param_start .. cloc];
-				size_t loc = find_c(each, ':');
+				size_t loc = find(each, ':');
 				if(loc != -1) {
 					PANELS[each[0 .. loc].dup] = each[loc+1 .. $].dup;
 				}
 				
 				param_start = cloc + 2;
-				cloc = find_c(z, ',', param_start);
+				cloc = find(z, ',', param_start);
 			} while(cloc != -1);
 		}
 		
@@ -1467,7 +1467,7 @@ void process_post() {
 				
 				if(post[endl+2] == '\r' && post[endl+3] == '\n') {
 					string data;
-					i = find_s(post, boundary, k);
+					i = find(post, boundary, k);
 					if(i != -1) {
 						data = post[endl+4 .. ++i];
 						k = i + boundary.length;
@@ -1476,11 +1476,11 @@ void process_post() {
 						k = post.length;
 					}
 					
-					size_t name_loc = find_s(disposition, `name="`);
+					size_t name_loc = find(disposition, `name="`);
 					size_t end_name_loc;
 					if(name_loc != -1) {
 						name_loc += `name="`.length;
-						end_name_loc = find_c(disposition, '"', name_loc);
+						end_name_loc = find(disposition, '"', name_loc);
 					}
 					
 					if(name_loc != -1 && end_name_loc != -1) {
@@ -1488,11 +1488,11 @@ void process_post() {
 						if(name.length > 2 && name[1] == '_' && name[0] == 'f') {
 							FUNC[name[2 .. $]] = data;
 							
-							size_t filename_loc = find_s(disposition, `filename="`);
+							size_t filename_loc = find(disposition, `filename="`);
 							if(filename_loc != -1) {
 								filename_loc += `filename="`.length;
 								assert(disposition[filename_loc] != '"');
-								size_t end_filename_loc = find_c(disposition, '"', filename_loc);
+								size_t end_filename_loc = find(disposition, '"', filename_loc);
 								if(end_filename_loc != -1) {
 									FUNC[name[2 .. $] ~ "_filename"] = disposition[filename_loc .. end_filename_loc];
 									POST[name[2 .. $] ~ "_type"] = type;
@@ -1549,7 +1549,7 @@ int process_header() {
 	for(; k < l; k++) {
 		if(req_header[k] == ' ') {
 			string uri = req_header[j .. k];
-			auto len = find_c(uri, '?');
+			auto len = find(uri, '?');
 			if(len != -1) {
 				cur_conn.doc = uri[0 .. len];
 				process_qs(uri[++len .. $]);
@@ -1598,7 +1598,7 @@ int process_header() {
 				if(str_cmp(&req_header[k], "User-Agent: ")) {
 					j = k + "User-Agent: ".length;
 					string agent = tango.text.Ascii.toLower(req_header[j .. endl]);
-					size_t loc = find_s(agent, "msie");
+					size_t loc = find(agent, "msie");
 					if(loc != -1) {
 						cur_conn.browser = BROWSER.MSIE;
 						if(agent.length > loc+6) {
@@ -1611,16 +1611,16 @@ int process_header() {
 								cur_conn.browser_version = -1;
 							}
 						}
-					} else if(find_s(agent, "gecko") != -1) {
+					} else if(find(agent, "gecko") != -1) {
 						cur_conn.browser = BROWSER.MOZILLA;
 						//TODO!!! - add the version number check
-					} else if(find_s(agent, "opera") != -1) {
+					} else if(find(agent, "opera") != -1) {
 						cur_conn.browser = BROWSER.OPERA;
 						//TODO!!! - add the version number check
-					} else if(find_s(agent, "safari") != -1) {
+					} else if(find(agent, "safari") != -1) {
 						cur_conn.browser = BROWSER.SAFARI;
 						//TODO!!! - add the version number check
-					} else if(find_s(agent, "validator") != -1) {
+					} else if(find(agent, "validator") != -1) {
 						cur_conn.browser = BROWSER.VALIDATOR;
 					} else {
 						cur_conn.browser = BROWSER.OTHER;
@@ -1637,7 +1637,7 @@ int process_header() {
 			
 			if(str_cmp(&req_header[k], "Accept-Encoding: ")) {
 				j = k + "Accept-Encoding: ".length;
-				if(find_s(req_header[j .. endl], "gzip") != -1) {
+				if(find(req_header[j .. endl], "gzip") != -1) {
 					cur_conn.gzip = true;
 				} else {
 					cur_conn.gzip = false;
@@ -1911,7 +1911,7 @@ int main_loop() {
 								if(doc.length > 2 && doc[0] == 'j' && doc[1] == '/') {
 									string photo = doc[2 .. $];
 									//TODO!!!! temporary, so my computer doesn't suck... delete me!
-									if(find_c(photo, '/') != -1) {
+									if(find(photo, '/') != -1) {
 										goto error;
 									}
 									// j/[size][hash]
@@ -2070,10 +2070,10 @@ void serve_dir(string location, string prefix) {
 	bool serve_dir_helper(FilePath fp) {
 		string file = fp.toString();
 		string f_orig = file;
-		auto off = find_c(file, '/');
+		auto off = find(file, '/');
 		while(off != -1) {
 			file = file[++off .. $];
-			off = find_c(file, '/');
+			off = find(file, '/');
 		}
 		
 		string tmp = f_orig[location.length .. $];
@@ -2093,10 +2093,10 @@ void serve_file(string filename, string prefix, string data, string type) {
 	}
 	
 	string file = filename;
-	auto off = find_c(filename, '/');
+	auto off = find(filename, '/');
 	while(off != -1) {
 		file = filename[++off .. $];
-		off = find_c(filename, '/', off);
+		off = find(filename, '/', off);
 	}
 	
 	file = prefix ~ file;
@@ -2227,7 +2227,7 @@ void parse_config(string config_file) {
 	debug noticeln("-- parsing config");
 	string* val;
 	config_file = cast(string)File.get(config_file);
-	config_file = replace_cc(config_file, '\n', ',');
+	config_file = replace(config_file, '\n', ',');
 	config_file = clean_text(config_file);
 	string[string] c_config;
 	
@@ -2548,16 +2548,16 @@ uint in_array(string val, string[] arr) {
 
 //TODO! - this is probably incorrect and also really slow too
 string uri_encode(string str) {
-	str = replace_cs(str, '%', "%25");
-	str = replace_cs(str, '&', "%26");
-	str = replace_cs(str, '#', "%23");
-	str = replace_cs(str, '+', "%2B");
-	str = replace_cs(str, '\r', "%0D");
-	str = replace_cs(str, '\n', "%0A");
-	str = replace_cs(str, '\'', "%27");
-	str = replace_cs(str, '"', "%22");
-	//str = replace_cc(str, " ", "+");
-	str = replace_cs(str, ' ', "%20");
+	str = replace(str, '%', "%25");
+	str = replace(str, '&', "%26");
+	str = replace(str, '#', "%23");
+	str = replace(str, '+', "%2B");
+	str = replace(str, '\r', "%0D");
+	str = replace(str, '\n', "%0A");
+	str = replace(str, '\'', "%27");
+	str = replace(str, '"', "%22");
+	//str = replace(str, " ", "+");
+	str = replace(str, ' ', "%20");
 	
 	return str;
 }
@@ -2746,7 +2746,7 @@ int process_photo(string filename) {
 	}
 	
 	int orientation = (info & ORIENT_MASK) >> ORIENT_OFFSET;
-	int disk = cast(int)find_c(tostring, filename[PHOTO_OFFSET.VOL]);
+	int disk = cast(int)find(tostring, filename[PHOTO_OFFSET.VOL]);
 	
 	if(orientation == ORIENT_90) {
 		resize ~= "-rotate 90 ";
@@ -2759,7 +2759,7 @@ int process_photo(string filename) {
 	int exists;
 	string orig_file = filename.dup;
 	// the reason why this is a while() is because I want to start at the next sizes up, and I don't want a buffer overrun 
-	orig_size = find_c(size_order, enc_char(size))+1;
+	orig_size = find(size_order, enc_char(size))+1;
 	while(orig_size > 0) {
 		orig_file[PHOTO_OFFSET.SIZE] = size_order[orig_size];
 		exists = Path.exists(get_real_filename(orig_file));
@@ -2774,7 +2774,7 @@ int process_photo(string filename) {
 	if(orientation != 0) {
 		int new_info = info & !ORIENT_MASK; // set it to 0 (orig orientation) by clearing the second two bits
 		orig_file[PHOTO_OFFSET.INFO] = enc_char(new_info);
-		for(orig_size = find_c(size_order, enc_char(size)); orig_size > 0; orig_size++) {
+		for(orig_size = find(size_order, enc_char(size)); orig_size > 0; orig_size++) {
 			orig_file[PHOTO_OFFSET.SIZE] = size_order[orig_size];
 			exists = Path.exists(get_real_filename(orig_file));
 			if(exists) {
