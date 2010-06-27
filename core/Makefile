@@ -7,7 +7,7 @@ LINKOBJ=$(COREOBJ)
 
 # this needs to be split to ldc / dmd when I actually support dmd
 TANGO_FLAGS=-release
-TANGO_REVISION=5486
+TANGO_REVISION=5489
 ifeq ($(M32),true)
 	TANGO_BUILD=./build/bin/linux32/bob
 else

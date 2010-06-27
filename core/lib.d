@@ -1360,10 +1360,8 @@ int stride(char c) {
 // Tango is kind of lame, so I made some compatability functions
 
 int exec(string cmd) {
-	//auto p = new Process(cmd, null);
-	//p.execute();
-	//return p.wait();
-	cmd ~= '\0';
+	cmd.length = cmd.length + 1;
+	cmd[$-1] = 0;
 	return system(cmd.ptr);
 }
 
