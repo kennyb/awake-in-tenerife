@@ -251,6 +251,8 @@ class HttpRequest {
 					p_tidy.execute();
 					p_tidy.wait;
 					output = (cast(string) File.get(filename ~ ".tidy")).replace('\n', ' ').remove('\r');
+					Path.remove(filename ~ ".tidy");
+					Path.remove(filename ~ ".tidy.err");
 				}
 				
 				noticeln("output: ", output.length);
