@@ -9,6 +9,7 @@ import tango.stdc.stdlib;
 import tango.stdc.posix.sys.time;
 import Integer = tango.text.convert.Integer;
 import Float = tango.text.convert.Float;
+import Layout = tango.text.convert.Layout;
 import tango.core.Vararg;
 //import Process = tango.sys.Process;
 import tango.io.FilePath;
@@ -36,9 +37,11 @@ string toString(...) {
 		} else if(_arguments[i] == typeid(uint)) {
 			str ~= Integer.toString(va_arg!(uint)(_argptr));
 		} else if(_arguments[i] == typeid(ulong)) {
-			str ~= Integer.toString(va_arg!(ulong)(_argptr));
+			auto v = va_arg!(ulong)(_argptr);
+			str ~= Integer.toString(v, v < uint.max ? "" : "x#");
 		} else if(_arguments[i] == typeid(long)) {
-			str ~= Integer.toString(va_arg!(long)(_argptr));
+			auto v = va_arg!(long)(_argptr);
+			str ~= Integer.toString(v,  (v < int.max && v > int.min) ? "" : "x#");
 		} else if(_arguments[i] == typeid(float)) {
 			str ~= Float.toString(va_arg!(float)(_argptr));
 		} else if(_arguments[i] == typeid(double)) {
@@ -54,6 +57,8 @@ string toString(...) {
 		} else if(_arguments[i] == typeid(string*) || _arguments[i] == typeid(char[]*)) {
 			str ~= *va_arg!(char[]*)(_argptr);
 		} else {
+			//Layout!(char) Layouter = new Layout!(char)();
+			//Layouter( TODO!! )
 			str ~= "unknown";
 			//_arguments[i].print();
 			break;
@@ -687,7 +692,7 @@ restart:
 	return -1;
 }
 
-ptrdiff_t findr(string str, char f, int offset = 0xb00bb00b) {
+ptrdiff_t find_r(string str, char f, int offset = 0xb00bb00b) {
 	auto len = cast(int) str.length - 1;
 	if(offset == 0xb00bb00b || offset > len) {
 		offset = len;
@@ -704,7 +709,7 @@ ptrdiff_t findr(string str, char f, int offset = 0xb00bb00b) {
 	return -1;
 }
 
-ptrdiff_t findr(string str, string f, int offset = 0xb00bb00b) {
+ptrdiff_t find_r(string str, string f, int offset = 0xb00bb00b) {
 	auto len = str.length - 1;
 	auto flen = f.length;
 	if(offset == 0xb00bb00b || offset > len) {
@@ -1109,6 +1114,59 @@ string before(string str, char search, int offset = 0) {
 	return output;
 }
 
+string before_r(string str, string search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_r(search, offset);
+		if(i != -1) {
+			output = str[offset .. i];
+		}
+	}
+	
+	return output;
+}
+
+string before_r(string str, char search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_r(search, offset);
+		if(i != -1) {
+			output = str[offset .. i];
+		}
+	}
+	
+	return output;
+}
+
+
+
+string after_r(string str, string search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_r(search, offset);
+		if(i != -1) {
+			output = str[i + search.length .. $];
+		}
+	}
+	
+	return output;
+}
+
+string after_r(string str, char search, int offset = 0) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_r(search, offset);
+		if(i != -1) {
+			output = str[++i .. $];
+		}
+	}
+	
+	return output;
+}
 
 string after(string str, string search, int offset = 0) {
 	string output = null;

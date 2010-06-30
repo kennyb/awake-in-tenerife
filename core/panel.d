@@ -383,7 +383,7 @@ final class PNL {
 	private static void parse_idioma(string filename) {
 		auto content = cast(string)File.get(filename);
 		if(content.length && filename[$-4 .. $] == ".txt") {
-			auto bar_pos = findr(filename, '/'); // cheap hack, because findr will return -1 if it's not found
+			auto bar_pos = find_r(filename, '/'); // cheap hack, because find_r will return -1 if it's not found
 			string file_lang = filename[++bar_pos .. $-4];
 			
 			content = replace(content, '\n', ' ');
