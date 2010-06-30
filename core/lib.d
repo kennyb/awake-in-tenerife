@@ -1114,7 +1114,7 @@ string before(string str, char search, int offset = 0) {
 	return output;
 }
 
-string before_r(string str, string search, int offset = 0) {
+string before_r(string str, string search, int offset = 0xb00bb00b) {
 	string output = null;
 	
 	if(str.length) {
@@ -1127,7 +1127,7 @@ string before_r(string str, string search, int offset = 0) {
 	return output;
 }
 
-string before_r(string str, char search, int offset = 0) {
+string before_r(string str, char search, int offset = 0xb00bb00b) {
 	string output = null;
 	
 	if(str.length) {
@@ -1141,32 +1141,6 @@ string before_r(string str, char search, int offset = 0) {
 }
 
 
-
-string after_r(string str, string search, int offset = 0) {
-	string output = null;
-	
-	if(str.length) {
-		auto i = str.find_r(search, offset);
-		if(i != -1) {
-			output = str[i + search.length .. $];
-		}
-	}
-	
-	return output;
-}
-
-string after_r(string str, char search, int offset = 0) {
-	string output = null;
-	
-	if(str.length) {
-		auto i = str.find_r(search, offset);
-		if(i != -1) {
-			output = str[++i .. $];
-		}
-	}
-	
-	return output;
-}
 
 string after(string str, string search, int offset = 0) {
 	string output = null;
@@ -1193,6 +1167,33 @@ string after(string str, char search, int offset = 0) {
 	
 	return output;
 }
+
+string after_r(string str, string search, int offset = 0xb00bb00b) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_r(search, offset);
+		if(i != -1) {
+			output = str[i + search.length .. $];
+		}
+	}
+	
+	return output;
+}
+
+string after_r(string str, char search, int offset = 0xb00bb00b) {
+	string output = null;
+	
+	if(str.length) {
+		auto i = str.find_r(search, offset);
+		if(i != -1) {
+			output = str[++i .. $];
+		}
+	}
+	
+	return output;
+}
+
 
 string until(string str, string search, int offset = 0) {
 	string output = null;
