@@ -241,7 +241,9 @@ class HttpRequest {
 					output = output[loc .. $];
 				}
 				
-				File.set(filename, output);
+				//File.set(filename, output);
+				Path.remove(filename);
+				Path.remove(header_file);
 				
 				if(tidy_it) {
 					noticeln("tidying... ", output[0 .. 50]);
