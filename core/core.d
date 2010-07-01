@@ -728,14 +728,11 @@ class Core {
 			}
 		}
 		
-		version(notrelease) {
-			if(settings.reload_panels) {
-				PNL.reload_panels(settings.panels_dir, settings.lang_dir);
-				load_files();
-				//GC.collect(); // <-- this is horendously slow on llvm
-			}
+		if(settings.reload_panels || "ficklepuppies" in POST) {
+			PNL.reload_panels(settings.panels_dir, settings.lang_dir);
+			load_files();
+			GC.collect(); // <-- this is horendously slow on llvm
 		}
-		
 		
 		process_page();
 		assert(cur_session !is null);
