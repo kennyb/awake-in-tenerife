@@ -1767,7 +1767,9 @@ int main_loop() {
 				
 				auto l = io_trywritetimeout(cur_sock, cast(char*)output + conn.cur_ptr, how_much);
 				
-				if(l+conn.cur_ptr == conn.output_len) {
+				if(l == -3 || l == -2) {
+					conn.end();
+				} else if(l+conn.cur_ptr == conn.output_len) {
 					debug noticeln("connection success ", cur_sock);
 					//conn.output.length = 0;
 					if(conn.keepalive) {
@@ -1779,8 +1781,6 @@ int main_loop() {
 						//io_dontwantwrite(i);
 						conn.end();
 					}
-				} else if(l == -3) {
-					conn.end();
 				} else if(l > 0) {
 					conn.cur_ptr += l;
 				}
@@ -1805,7 +1805,7 @@ int main_loop() {
 				// && dyn_connection.connected <= dyn_connection.reading + 10
 				while(dyn_connection.used <= MAX_CONNECTIONS && --connects && (n = socket_accept4(s, cast(char*)ip_incoming.ptr, &settings.bind_port)) != -1) {
 					cur_sock = n;
-					//io_nonblock(n);
+					io_nonblock(n);
 					if(io_fd(n)) {
 						cur_conn = dyn_connection.connect();
 						cur_conn.begin_connect = begin_connect;
@@ -1825,7 +1825,7 @@ int main_loop() {
 			} else {
 				double begin_read = microtime();
 				bool error = false;
-				auto l = io_tryread(cur_sock, &req_data[0], 4096);
+				auto l = io_tryreadtimeout(cur_sock, &req_data[0], 4096);
 				
 				if(l > 0) {
 					cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
@@ -1981,7 +1981,7 @@ int main_loop() {
 						
 						cur_conn.end_processing = microtime();
 					}
-				} else if(l == -3) {
+				} else if(l == -3 || l == -2) {
 					goto error;
 				}
 				
@@ -1990,7 +1990,7 @@ int main_loop() {
 				
 				if(error) {
 error:				cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
-					io_close(cur_sock);
+					//io_close(cur_sock);
 					errorln("closed with error");
 					if(cur_conn) {
 						cur_conn.end();
@@ -2022,7 +2022,13 @@ error:				cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
 			if(dyn_connection.connected - dyn_connection.reading - dyn_connection.writing > 0) {
 				uint d;
 				while((d = io_timeouted()) != -1) {
-					io_close(d);
+					//io_close(d);
+					cur_conn = cast(dyn_connection*)io_getcookie(d);
+					//io_close(cur_sock);
+					errorln("closed with timeout");
+					if(cur_conn) {
+						cur_conn.end();
+					}
 				}
 			}
 			
