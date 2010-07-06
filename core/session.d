@@ -9,7 +9,7 @@ import edb;
 import panel;
 
 
-class UserAuth {
+class UserAuth : EdbObject {
 	mixin(GenDataModel!("UserAuth", `
 		uint email_crc;
 		int uid;
@@ -25,7 +25,7 @@ class UserAuth {
 		PNL.exportFunctionArg("login", "password");
 		PNL.exportFunctionArg("login", "sess_len");
 	}
-		
+	
 	static int validate_user(string email, string passwd) {
 		//uint[] users = UserAuth.query(crc32(0, cast(ubyte*)email.ptr, email.length));
 		UserAuth ua = new UserAuth("email_crc:" ~ Integer.toString(crc32(0, cast(ubyte*)email.ptr, email.length)));
@@ -94,7 +94,7 @@ class UserAuth {
 }
 
 
-class Session {
+class Session : EdbObject {
 	// OPTIMIZE!! - later, store the language as a short instead of a string
 	mixin(GenDataModel!("Session", `
 		string sid; // make an index across these for fast lookups.
@@ -190,7 +190,7 @@ class Session {
 }
 
 
-class UserSession {
+class UserSession : EdbObject {
 	mixin(GenDataModel!("UserSession", "
 		int last_request;
 		int hits;

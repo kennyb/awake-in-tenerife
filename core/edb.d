@@ -31,6 +31,23 @@ struct EdbStats {
 static EdbStats edb_stats;
 static MongoDB edb_connection;
 
+class EdbObject {
+	//int loop(); // I dunno why this is an int!
+	//int destroy(); // not really sure why this one is either
+	//long save();
+	
+	int can_read() {
+		return SUCCESS;
+	}
+	
+	int can_write() {
+		return SUCCESS;
+	}
+	
+	int verify() {
+		return SUCCESS;
+	}
+}
 
 void function()[string] edb_inits;
 extern(C) void edb_init(string host = "127.0.0.1", int port = 27017, string db = "test") {
@@ -360,10 +377,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	// looping stuff
 	private bool skip_loop;
-	private uint current = -1;
-	private uint column = -1;
+	private uint current;
+	private uint column;
 	uint num_results;
 	uint result_offset;
+	uint unreadable_results;
 	
 	private uint* ptr_page_offset;
 	private uint* ptr_page_size;
@@ -388,6 +406,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		this.page_offset = page_offset;
 		current = -1;
 		column = -1;
+		unreadable_results = 0;
 		
 		saved_query.parse_options(str_query, true);
 		make_query_local(b, saved_query);
@@ -456,6 +475,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		
 		skip_loop = false;
 		current = -1;
+		unreadable_results = 0;
 		
 		auto ret = loop();
 		mongo_cursor_destroy(cursor);
@@ -468,6 +488,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		this.page_offset = page_offset;
 		current = -1;
 		column = -1;
+		unreadable_results = 0;
 		
 		bson b;
 		make_query_local(b, parsed_query);
@@ -563,6 +584,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				}
 			}
 			
+			if(!can_read()) {
+				unreadable_results++;
+				return loop();
+			}
+			
 			//TODO!!!! - prepare an update query here deleting the extra fields (this will be executed on object save)
 			
 			/*
@@ -624,6 +650,14 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	long save() {
 		bson b;
+		
+		if(!verify()) {
+			return FAILURE;
+		}
+		
+		if(!can_write()) {
+			return FAILURE;
+		}
 		
 		noticeln(obj_name, ".saving(", _id, ")");
 		bool is_new = true;
@@ -1541,7 +1575,7 @@ version(unittests) {
 	*/
 	
 	
-	class UserDataModelVersion1 {
+	class UserDataModelVersion1 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			string firstname;
@@ -1549,7 +1583,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion2 {
+	class UserDataModelVersion2 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			string firstname;
@@ -1558,7 +1592,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion3 {
+	class UserDataModelVersion3 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			string firstname;
@@ -1566,7 +1600,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion4 {
+	class UserDataModelVersion4 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			string firstname;
@@ -1575,7 +1609,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion5 {
+	class UserDataModelVersion5 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			int d_created;
@@ -1584,7 +1618,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion6 {
+	class UserDataModelVersion6 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			int d_created;
@@ -1594,7 +1628,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion7 {
+	class UserDataModelVersion7 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			int d_created;
@@ -1605,7 +1639,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion8 {
+	class UserDataModelVersion8 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			int uid;
 			int d_modified;
@@ -1615,7 +1649,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UserDataModelVersion9 {
+	class UserDataModelVersion9 : EdbObject {
 		mixin(GenDataModel!("UnittestUser", `
 			string lastname;
 			int d_modified;
@@ -1625,7 +1659,7 @@ version(unittests) {
 		`));
 	}
 	
-	class UnittestPhotoTag : TemplateObject {
+	class UnittestPhotoTag : EdbObject, TemplateObject {
 		mixin(GenDataModel!("UnittestPhotoTag", `
 			int pid;
 			int uid;
