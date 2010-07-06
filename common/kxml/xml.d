@@ -50,7 +50,9 @@ version(Tango) {
 		auto rgxp = Regex(pattern,"g");
 		return rgxp.replaceAll(input,&tmpdel);
 	}
-} else {
+}
+
+version(Phobos){
 	version(D_Version2) {
 		import std.conv:to;
 		import std.string:strip,stripr,stripl,split,replace,find=indexOf,cmp,icmp;
