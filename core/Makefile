@@ -16,7 +16,7 @@ endif
 
 
 CFLAGS=
-DFLAGS=-I../common -nodefaultlib
+DFLAGS=-I../common
 
 ifeq ($(BYTECODE),true)
 	ifeq ($(DMD),ldc)
@@ -151,6 +151,7 @@ else
 	DFLAGS+= -g -output-bc $(EXTRA)
 	ifeq ($(DMD),ldc)
 		#-annotate -op -D
+		DFLAGS+= -op -nodefaultlib
 		DFLAGS+= -v-cg -noverify
 		DFLAGS+= -d-debug -d-version=notrelease -d-version=debug
 		LDFLAGS+= -disable-opt -disable-inlining -disable-internalize
