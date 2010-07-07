@@ -286,7 +286,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		
 		foreach(j, b; d.tupleof) {
 			char field_type = 0;
-			string field_name = d.tupleof[j].stringof[2 .. $];
+			const string field_name = d.tupleof[j].stringof[2 .. $];
 			
 			static if(is(typeof(d.tupleof[j]) == int) || is(typeof(d.tupleof[j]) == uint)) {
 				field_type = 'i';
@@ -300,16 +300,14 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				field_type = 'b';
 			} else static if(is(typeof(d.tupleof[j]) == short) || is(typeof(d.tupleof[j]) == ushort)) {
 				field_type = 'w';
-			} else static if(is(typeof(d.tupleof[j]) == short) || is(typeof(d.tupleof[j]) == ushort)) {
+			} else static if(is(typeof(d.tupleof[j]) == bool)) {
 				field_type = 'b';
+			} else {
+				static assert(false, "unknown type for " ~ obj_name ~ "." ~ field_name);
 			}
 			
-			if(field_type) {
-				new_structure_string ~= field_name ~ ":'*',\n";
-				new_structure_string[$-4] = field_type;
-			} else {
-				errorln("unknown type for ", obj_name, ".", field_name);
-			}
+			new_structure_string ~= field_name ~ ":'*',\n";
+			new_structure_string[$-4] = field_type;
 		}
 		
 		obj_structure = new_structure_string[0 .. $-2];
