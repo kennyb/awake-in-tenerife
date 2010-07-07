@@ -43,6 +43,23 @@ class EdbObject {
 	import Integer = tango.text.convert.Integer;
 	import tango.core.Memory : GC;
 	
+	protected bool skip_loop;
+	protected uint current;
+	protected uint column;
+	protected uint num_results;
+	protected uint result_offset;
+	protected uint unreadable_results;
+	
+	protected uint* ptr_page_offset;
+	protected uint* ptr_page_size;
+	protected uint* ptr_width;
+	protected uint width = 4;
+	protected uint page_offset = 0;
+	protected uint page_size = 1;
+	protected string[string] saved_query;
+	protected mongo_cursor* cursor;
+	
+	
 	protected int verify_readable() {
 		return SUCCESS;
 	}
@@ -264,6 +281,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				field_type = 'b';
 			} else static if(is(typeof(d.tupleof[j]) == short) || is(typeof(d.tupleof[j]) == ushort)) {
 				field_type = 'w';
+			} else static if(is(typeof(d.tupleof[j]) == short) || is(typeof(d.tupleof[j]) == ushort)) {
+				field_type = 'b';
 			}
 			
 			if(field_type) {
@@ -321,6 +340,18 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	static long total() {
 		return collection.total();
+	}
+	
+	static bool exists(long id) {
+		bson b;
+		string[string] q;
+		q["$count"] = obj_name_quoted;
+		q["_id"] = Integer.toString(id);
+		
+		make_query(b, q);
+		long r = _count(&b);
+		bson_destroy(&b);
+		return r > 0;
 	}
 	
 	static long count(string str_query) {
@@ -510,23 +541,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	
-	// looping stuff
-	private bool skip_loop;
-	private uint current;
-	private uint column;
-	uint num_results;
-	uint result_offset;
-	uint unreadable_results;
-	
-	private uint* ptr_page_offset;
-	private uint* ptr_page_size;
-	private uint* ptr_width;
-	private uint width = 4;
-	private uint page_offset = 0;
-	private uint page_size = 1;
-	private string[string] saved_query;
-	private mongo_cursor* cursor;
 	
 	this() {
 		//std.gc.addRange(&data, &data+data.sizeof);
@@ -1889,9 +1903,9 @@ version(unittests) {
 			pt.save();
 			
 			assert(UnittestPhotoTag.total == 1);
-			assert(UnittestPhotoTag.count("_id: 1") == 1);
-			assert(UnittestPhotoTag.count("_id: 2") == 0);
-			assert(UnittestPhotoTag.count("_id: 3") == 0);
+			assert(UnittestPhotoTag.exists(1));
+			assert(!UnittestPhotoTag.exists(2));
+			assert(!UnittestPhotoTag.exists(3));
 			assert(UnittestPhotoTag.count("uid: 11") == 1);
 			
 			pt._id = -2;
@@ -1904,9 +1918,9 @@ version(unittests) {
 			pt.save();
 			
 			assert(UnittestPhotoTag.total == 2);
-			assert(UnittestPhotoTag.count("_id: 1") == 1);
-			assert(UnittestPhotoTag.count("_id: 2") == 1);
-			assert(UnittestPhotoTag.count("_id: 3") == 0);
+			assert(UnittestPhotoTag.exists(1));
+			assert(UnittestPhotoTag.exists(2));
+			assert(!UnittestPhotoTag.exists(3));
 			assert(UnittestPhotoTag.count("uid: 11") == 1);
 			
 			pt._id = -3;
@@ -1919,9 +1933,9 @@ version(unittests) {
 			pt.save();
 			
 			assert(UnittestPhotoTag.total == 3);
-			assert(UnittestPhotoTag.count("_id: 1") == 1);
-			assert(UnittestPhotoTag.count("_id: 2") == 1);
-			assert(UnittestPhotoTag.count("_id: 3") == 1);
+			assert(UnittestPhotoTag.exists(1));
+			assert(UnittestPhotoTag.exists(2));
+			assert(UnittestPhotoTag.exists(3));
 			assert(UnittestPhotoTag.count("uid: 11") == 2);
 		}
 		
