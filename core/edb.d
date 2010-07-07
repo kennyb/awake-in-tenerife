@@ -32,21 +32,43 @@ static EdbStats edb_stats;
 static MongoDB edb_connection;
 
 class EdbObject {
-	//int loop(); // I dunno why this is an int!
-	//int destroy(); // not really sure why this one is either
-	//long save();
+	import lib;
+	import panel;
+	import mongodb;
+	import tango.stdc.stdlib : rand;
+	import tango.stdc.string : memcpy;
+	import tango.io.device.File;
+	import tango.io.FilePath;
+	import Path = tango.io.Path;
+	import Integer = tango.text.convert.Integer;
+	import tango.core.Memory : GC;
 	
-	int can_read() {
+	protected int verify_readable() {
 		return SUCCESS;
 	}
 	
-	int can_write() {
+	protected int verify_writable() {
 		return SUCCESS;
 	}
 	
-	int verify() {
-		return SUCCESS;
+	protected int find_id() {
+		// for now, this is done by random, but later, order this based on the server array
+		while(true) {
+			int id = rand();
+			if(id <= 0) {
+				id = -id;
+			}
+			
+			//string name = obj_name ~ build_id_str(id);
+			//Data* data_exists = name in cache;
+			//if(!data_exists && !Path.exists(name)) {
+				return id;
+			//}
+		}
+		
+		return 0;
 	}
+	
 }
 
 void function()[string] edb_inits;
@@ -80,21 +102,13 @@ template FieldFromFUNC(F, T) {
 template GenDataModel(string name, string data_layout, bool export_template = false, bool load = true) {
 	const string GenDataModel = `
 	
-	import lib;
-	import panel;
-	import mongodb;
-	import tango.stdc.stdlib : rand;
-	import tango.stdc.string : memcpy;
-	import tango.io.device.File;
-	import tango.io.FilePath;
-	import Path = tango.io.Path;
-	import Integer = tango.text.convert.Integer;
-	import tango.core.Memory : GC;
+	static const string obj_name = "` ~ name ~ `";
+	static const string obj_name_quoted = "\"` ~ name ~ `\"";
 	
 	// static shit
 	private static MongoCollection collection;
 	private static Data[long] cache;
-	private static string obj_name = "` ~ name ~ `";
+	
 	static this() {
 		edb_inits["`~name~`"] = &edb_init;
 		` ~ (export_template ? `
@@ -314,7 +328,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			bson b;
 			string[string] q;
 			q.parse_options(str_query, false);
-			q["$count"] = "\""~obj_name~'"';
+			q["$count"] = obj_name_quoted;
 			
 			make_query(b, q);
 			long r = _count(&b);
@@ -325,29 +339,151 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	void make_bson_struct(inout bson b) {
+	private static void make_query(inout bson b, string str_query) {
+		string[string] query;
+		query.parse_options(str_query, false);
+		make_query(b, query);
+	}
+	
+	private static void make_query(inout bson b, inout string[string] parsed_query) {
 		BSON bs;
 		
-		foreach(j, caca; data.tupleof) {
-			string field = this.data.tupleof[j].stringof["this.data.".length .. $];
-			
-			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
-				// int1 / int2
-				bs.append(field, cast(int) data.tupleof[j]);
-				//static assert(false, "for some alignment bug, this isn't supported yet");
-			} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int) || is(typeof(data.tupleof[j]) == float) || is(typeof(data.tupleof[j]) == double) || is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long)) {
-				// int4 / int8 / float4 / float8 / string(word)
-				bs.append(field, data.tupleof[j]);
-			} else static if(is(typeof(data.tupleof[j]) == string) || is(typeof(data.tupleof[j]) == bool)) {
-				bs.append(field, data.tupleof[j]);
-			} else {
-				static assert(false, "no bson conversion for " ~ data.tupleof[j].stringof);
+		string opt_orderby;
+		string opt_hint;
+		string opt_count;
+		string opt_distinct;
+		
+		if(parsed_query != null) {
+			// the following foreach has problems with ldc-0.9.2... tired of fixing D's bugs!
+			//foreach(label, val; parsed_query) {
+			foreach(label; parsed_query.keys) {
+				string val = parsed_query[label];
+				bool remove = true;
+				
+				size_t val_length = val.length;
+				if(val_length) {
+					
+					switch(label) {
+					case "$page_size":
+					case "$limit":
+						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
+						//page_size = toUint(val);
+						// error
+						break;
+						
+					case "$column_width":
+						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
+						//width = toUint(val);
+						// error
+						break;
+						
+					case "$page":
+					case "$page_offset":
+						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
+						//page_offset = toUint(val);
+						break;
+						
+					case "$orderby":
+						opt_orderby = val;
+						break;
+						
+					case "$count":
+						opt_count = val;
+						break;
+						
+					case "$distinct":
+						opt_distinct = val;
+						break;
+						
+					case "$hint":
+						opt_hint = val;
+						break;
+						
+					default:
+						remove = false;
+						if(val == "null") {
+							bs.append(label, bson_type.bson_null);
+						} else if(val == "undefined") {
+							bs.append(label, bson_type.bson_undefined);
+						} else if(val == "true") {
+							bs.append(label, true);
+						} else if(val == "false") {
+							bs.append(label, false);
+						} else if(val.ptr) {
+							if(val_length > 1) {
+								char v1 = val[0];
+								char v2 = val[$-1];
+							
+								if((v1 == '\"' && v2 == '\"') || (v1 == '\'' && v2 == '\'')) {
+									// string
+									bs.append(label, val[1 .. $-1]);
+									break;
+								} else if(v1 == '{' && v2 == '}') {
+									// object
+									bson obj_b;
+									make_query(obj_b, val);
+									bs.append(label, obj_b);
+									break;
+								} else if(find(label, '.') != -1) {
+									//TODO(0.2) - toDouble function
+									bs.append(label, toFloat(val));
+									break;
+								}
+							}
+							
+							long val_l = toLong(val);
+							if(val_l < int.max && val_l > int.min) {
+								bs.append(label, cast(int) val_l);
+							} else {
+								bs.append(label, val_l);
+							}
+						}
+					}
+				}
 			}
 		}
-		
-		bs.exportBSON(b);
+	
+		if(opt_orderby != null || opt_hint != null || opt_count != null || opt_distinct != null) {
+			BSON query_bs;
+			bson bson_query;
+			bson bson_orderby;
+			bson bson_hint;
+			
+			bs.exportBSON(bson_query);
+			if(opt_count != null) {
+				query_bs.append("count", obj_name);
+			}
+				
+			if(opt_distinct != null) {
+				query_bs.append("distinct", obj_name);
+			}
+			
+			if(opt_count != null && parsed_query.length) {
+				query_bs.append("query", bson_query);
+			}
+			
+			if(opt_distinct != null) {
+				query_bs.append("key", opt_distinct);
+			}
+			
+			if(opt_orderby != null) {
+				make_query(bson_orderby, opt_orderby);
+				query_bs.append("orderby", bson_orderby);
+			}
+			
+			if(opt_hint != null) {
+				make_query(bson_hint, opt_hint);
+				query_bs.append("hint", bson_hint);
+			}
+			
+			query_bs.exportBSON(b);
+		} else {
+			bs.exportBSON(b);
+		}
 	}
-
+	
+	
+	
 	
 	// this is going to be very hard to implement on mongodb.. what I could do though, is implement
 	// a module in mongodb which allows servers to register hooks based on queries, and if it's true, send a notification
@@ -584,7 +720,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				}
 			}
 			
-			if(!can_read()) {
+			if(verify_readable()) {
 				unreadable_results++;
 				return loop();
 			}
@@ -651,11 +787,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	long save() {
 		bson b;
 		
-		if(!verify()) {
-			return FAILURE;
-		}
-		
-		if(!can_write()) {
+		if(verify_writable()) {
+			noticeln("unable to verify");
 			return FAILURE;
 		}
 		
@@ -810,163 +943,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		*/
 		
 		return FAILURE;
-	}
-	
-	private int find_id() {
-		// for now, this is done by random, but later, order this based on the server array
-		while(true) {
-			int id = rand();
-			if(id <= 0) {
-				id = -id;
-			}
-			
-			//string name = obj_name ~ build_id_str(id);
-			//Data* data_exists = name in cache;
-			//if(!data_exists && !Path.exists(name)) {
-				return id;
-			//}
-		}
-		
-		return 0;
-	}
-	
-	private static void make_query(inout bson b, string str_query) {
-		string[string] query;
-		query.parse_options(str_query, false);
-		make_query(b, query);
-	}
-	
-	private static void make_query(inout bson b, inout string[string] parsed_query) {
-		BSON bs;
-		
-		string opt_orderby;
-		string opt_hint;
-		string opt_count;
-		string opt_distinct;
-		
-		if(parsed_query != null) {
-			// the following foreach has problems with ldc-0.9.2... tired of fixing D's bugs!
-			//foreach(label, val; parsed_query) {
-			foreach(label; parsed_query.keys) {
-				string val = parsed_query[label];
-				bool remove = true;
-				
-				size_t val_length = val.length;
-				if(val_length) {
-					
-					switch(label) {
-					case "$page_size":
-					case "$limit":
-						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
-						//page_size = toUint(val);
-						// error
-						break;
-						
-					case "$column_width":
-						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
-						//width = toUint(val);
-						// error
-						break;
-						
-					case "$page":
-					case "$page_offset":
-						//TODO(0.2) - make a generic function to get the value based on it being a literal or a variable
-						//page_offset = toUint(val);
-						break;
-						
-					case "$orderby":
-						opt_orderby = val;
-						break;
-						
-					case "$count":
-						opt_count = val;
-						break;
-						
-					case "$distinct":
-						opt_distinct = val;
-						break;
-						
-					case "$hint":
-						opt_hint = val;
-						break;
-						
-					default:
-						remove = false;
-						if(val == "null") {
-							bs.append(label, bson_type.bson_null);
-						} else if(val == "undefined") {
-							bs.append(label, bson_type.bson_undefined);
-						} else if(val == "true") {
-							bs.append(label, true);
-						} else if(val == "false") {
-							bs.append(label, false);
-						} else if(val.ptr) {
-							if(val_length > 1) {
-								char v1 = val[0];
-								char v2 = val[$-1];
-							
-								if((v1 == '\"' && v2 == '\"') || (v1 == '\'' && v2 == '\'')) {
-									// string
-									bs.append(label, val[1 .. $-1]);
-									break;
-								} else if(v1 == '{' && v2 == '}') {
-									// object
-									bson obj_b;
-									make_query(obj_b, val);
-									bs.append(label, obj_b);
-									break;
-								} else if(find(label, '.') != -1) {
-									//TODO(0.2) - toDouble function
-									bs.append(label, toFloat(val));
-									break;
-								}
-							}
-							
-							long val_l = toLong(val);
-							if(val_l < int.max && val_l > int.min) {
-								bs.append(label, cast(int) val_l);
-							} else {
-								bs.append(label, val_l);
-							}
-						}
-					}
-				}
-			}
-		}
-	
-		if(opt_orderby != null || opt_hint != null || opt_count != null || opt_distinct != null) {
-			BSON query_bs;
-			bson bson_query;
-			bson bson_orderby;
-			bson bson_hint;
-			
-			bs.exportBSON(bson_query);
-			if(opt_count != null || opt_distinct != null) {
-				query_bs.append(opt_count != null ? "count" : "distinct", obj_name);
-			}
-			
-			if(opt_count != null && parsed_query.length) {
-				query_bs.append("query", bson_query);
-			}
-			
-			if(opt_distinct != null) {
-				query_bs.append("key", opt_distinct);
-			}
-			
-			if(opt_orderby != null) {
-				make_query(bson_orderby, opt_orderby);
-				query_bs.append("orderby", bson_orderby);
-			}
-			
-			if(opt_hint != null) {
-				make_query(bson_hint, opt_hint);
-				query_bs.append("hint", bson_hint);
-			}
-			
-			query_bs.exportBSON(b);
-		} else {
-			bs.exportBSON(b);
-		}
 	}
 	
 	private void make_query_local(inout bson b, string str_query) {
@@ -1140,6 +1116,29 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		
 		//noticeln("query...");
 		//bson_print(&b);
+	}
+	
+	void make_bson_struct(inout bson b) {
+		BSON bs;
+		
+		foreach(j, caca; data.tupleof) {
+			string field = this.data.tupleof[j].stringof["this.data.".length .. $];
+			
+			static if(is(typeof(data.tupleof[j]) == ubyte) || is(typeof(data.tupleof[j]) == byte) || is(typeof(data.tupleof[j]) == ushort) || is(typeof(data.tupleof[j]) == short)) {
+				// int1 / int2
+				bs.append(field, cast(int) data.tupleof[j]);
+				//static assert(false, "for some alignment bug, this isn't supported yet");
+			} else static if(is(typeof(data.tupleof[j]) == uint) || is(typeof(data.tupleof[j]) == int) || is(typeof(data.tupleof[j]) == float) || is(typeof(data.tupleof[j]) == double) || is(typeof(data.tupleof[j]) == ulong) || is(typeof(data.tupleof[j]) == long)) {
+				// int4 / int8 / float4 / float8 / string(word)
+				bs.append(field, data.tupleof[j]);
+			} else static if(is(typeof(data.tupleof[j]) == string) || is(typeof(data.tupleof[j]) == bool)) {
+				bs.append(field, data.tupleof[j]);
+			} else {
+				static assert(false, "no bson conversion for " ~ data.tupleof[j].stringof);
+			}
+		}
+		
+		bs.exportBSON(b);
 	}
 	`;
 }

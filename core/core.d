@@ -1,6 +1,6 @@
 module core;
 
-import tango.stdc.stdio;
+import tango.stdc.stdio:printf;
 import tango.stdc.signal;
 import tango.stdc.stdlib : exit, malloc;
 import tango.stdc.string;

@@ -4,7 +4,7 @@ static if(!is(string == char[])) {
 	alias char[] string;
 }
 
-import tango.stdc.stdio;
+import tango.stdc.stdio:printf,puts;
 import tango.stdc.stdlib;
 import tango.stdc.posix.sys.time;
 import Integer = tango.text.convert.Integer;
