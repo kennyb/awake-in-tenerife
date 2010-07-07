@@ -240,9 +240,9 @@ final class PNL {
 		version(notrelease) static private bool[string] public_pnl;
 	}
 	
-	static string[128] str_const_vars;
-	static string[128] str_local_vars;
-	static string[16] str_global_vars;
+	static private string[128] str_const_vars;
+	static private string[128] str_local_vars;
+	static private string[16] str_global_vars;
 	
 	static private PNLByte[] PB;
 	static private TemplateFrame[] PANELS;
@@ -266,7 +266,7 @@ final class PNL {
 	static private bool reload_resources = false;
 	
 	version(unittests) {
-		static void reset_state() {
+		static public void reset_state() {
 			pnl = null;
 			func_ret_pnl = null;
 			
@@ -303,7 +303,7 @@ final class PNL {
 		}
 	}
 	
-	static bool load_idioma(FilePath fp) {
+	static private bool load_idioma(FilePath fp) {
 		string name = fp.toString();
 		stdoutln("loading idoma: ", name);
 		parse_idioma(name);
@@ -311,7 +311,7 @@ final class PNL {
 		return true;
 	}
 	
-	static bool load_panel(FilePath fp) {
+	static private bool load_panel(FilePath fp) {
 		string filename = fp.toString();
 		if(filename.length && filename[$-1] != '~') {
 			stdoutln(preparse ? "preparsing" : "loading", " panel: ", filename);
@@ -321,7 +321,7 @@ final class PNL {
 		return true;
 	}
 	
-	static void reload_panels(string panels_dir, string lang_dir) {
+	static protected void reload_panels(string panels_dir, string lang_dir) {
 		pnl = null;
 		PB = null;
 		static_objects = null;
@@ -405,7 +405,7 @@ final class PNL {
 		}
 	}
 	
-	static void parse_text(string text, bool preparse = false) {
+	static protected void parse_text(string text, bool preparse = false) {
 		auto len = text.length;
 		if(len) {
 			string* val;
@@ -897,19 +897,19 @@ final class PNL {
 		}
 	}
 	
-	static void registerTemplate(string template_name, void function(inout PNL pnl, string, string) func) {
+	static public void registerTemplate(string template_name, void function(inout PNL pnl, string, string) func) {
 		templates[template_name] = func;
 	}
 	
-	static void exportFunction(string func_name, int function() func) {
+	static public void exportFunction(string func_name, int function() func) {
 		funcs[func_name] = func;
 	}
 	
-	static void exportPublicFunction(string func_name, int function() func) {
+	static public void exportPublicFunction(string func_name, int function() func) {
 		public_funcs[func_name] = func;
 	}
 	
-	static void exportFunctionArg(string func_name, string arg_name) {
+	static public void exportFunctionArg(string func_name, string arg_name) {
 		func_args[func_name] ~= arg_name;
 	}
 	
@@ -923,18 +923,21 @@ final class PNL {
 		MODE_CUSTOM
 	}
 	
-	int mode;
+	public string name;
+	public int mode;
+	public bool is_public;
+	
 	private PNLByte*[] pb;
 	private uint pb_count = 0;
 	private string text;
-	string name;
-	bool is_public;
 	
 	private int delegate()[int][string] obj_loops;
 	private long function(string args)[int][string] obj_funcs;
-	uint[string][uint] var_type;
-	char*[string][uint] var_ptr;
-	string*[string][uint] var_str;
+	
+	// this is embarrassing that they're public, lol... fix this shit
+	public uint[string][uint] var_type;
+	public char*[string][uint] var_ptr;
+	public string*[string][uint] var_str;
 	
 	private int[string] obj_loop_inst;
 	private int[string] obj_func_inst;
