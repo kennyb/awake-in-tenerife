@@ -880,7 +880,7 @@ final class PNL {
 									File.set(filename, data);
 								}
 								
-								serve_file(name, resource.dir, data, resource.type);
+								Core.serve_file(name, resource.dir, data, resource.type);
 								delete p;
 								break;
 								

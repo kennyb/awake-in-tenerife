@@ -136,34 +136,6 @@ user[uint] users;
 uint[][uint] user_won;
 
 
-extern(C) void sig_handler(int sig) {
-	stdoutln("caught signal... ", sig);
-}
-
-bool terminating = false;
-extern(C) void term_handler(int sig) {
-	if(terminating == false) {
-		stdoutln("signal ", sig, " caught...");
-		terminating = true;
-		terminate();
-	}
-}
-
-void terminate() {
-	Core.terminate();
-	
-	// D termination (since we can't really make main() return):
-	_moduleDtor();
-	//gc_term();
-	version(linux) {
-		_STD_critical_term();
-		_STD_monitor_staticdtor();
-	}
-	
-	exit(0);
-}
-
-
 enum {
 	//TODO(0.2) - as well as a hard limit of number of connections, additionally count the number of connections not yet writing waiting before connecting
 	MAX_CONNECTIONS = 200,
@@ -423,7 +395,6 @@ struct dyn_connection {
 		printf("| reading time: %0.2fms\n", reading_time);
 		printf("| processing time: %0.2fms\n", processing_time);
 		printf("| writing time: %0.2fms\n", writing_time);
-		//noticeln("+-------------");
 		printf("| > total time: %0.2fms\n", total_time);
 		printf("| > waiting time: %0.2fms\n", waiting_time);
 		noticeln("+-------------");
@@ -601,17 +572,35 @@ struct user {
 	//uint[] alerts; 
 }
 
+char[] compress(char[] srcbuf, int level) {
+	int err;
+	char[] destbuf;
+	size_t destlen;
+	
+	destlen = (srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12);
+	destbuf = new char[destlen];
+	//std.gc.hasNoPointers(destbuf.ptr);
+	err = compress2(cast(char*)destbuf.ptr, &destlen, cast(char*)srcbuf.ptr, cast(uint) srcbuf.length, level);
+	if(err) {
+		delete destbuf;
+		throw new Exception("zlib error: " ~ Integer.toString(err));
+	}
+	
+	destbuf.length = destlen;
+	return destbuf;
+}
+
 //TODO!! - move this out of this file... or rather, move all of the other stuff out of the core file. 
 class Core {
 	static:
-	char[] js_out;
+	static private char[] js_out;
 	
-	uint recollect;
-	uint out_offset;
-	int uptime;
+	static private uint recollect;
+	static private uint out_offset;
+	static private int uptime;
+	static private ulong request_num;
 	
-	
-	int init() {
+	static private int init() {
 		out_tmp = cast(char*)malloc(buffer_size);
 		uptime = cast(int)time(null);
 		out_ptr = 0;
@@ -621,28 +610,7 @@ class Core {
 		return 0;
 	}
 	
-	char[] compress(char[] srcbuf, int level) {
-		int err;
-		char[] destbuf;
-		size_t destlen;
-		
-		destlen = (srcbuf.length + ((srcbuf.length + 1023) / 1024) + 12);
-		destbuf = new char[destlen];
-		//std.gc.hasNoPointers(destbuf.ptr);
-		err = compress2(cast(char*)destbuf.ptr, &destlen, cast(char*)srcbuf.ptr, cast(uint) srcbuf.length, level);
-		if(err) {
-			delete destbuf;
-			throw new Exception("zlib error: " ~ Integer.toString(err));
-		}
-		
-		destbuf.length = destlen;
-		return destbuf;
-	}
-	
-	uint begin_num_queries;
-	double begin_query_time;
-	
-	void get_session() {
+	static private void get_session() {
 		Session session = null;
 		string sid = cur_conn.sid;
 		cur_conn.uid = 0;
@@ -706,8 +674,7 @@ class Core {
 		}
 	}
 	
-	ulong request_num;
-	void do_page_request() {
+	static private void do_page_request() {
 		request_num++;
 		debug errorln("------------------------");
 		debug errorln("request: ", request_num);
@@ -760,7 +727,7 @@ class Core {
 		//PostgreCore.pg_disconnect_all();
 	}
 	
-	void process_page() {
+	static private void process_page() {
 		// this is for debug
 		//uid = 11;
 		debug errorln("original query string: ", cur_conn.orig_qs);
@@ -1076,7 +1043,7 @@ class Core {
 		PNL.final_replacements.length = 0;
 	}
 	
-	void print_cookie() {
+	static private void print_cookie() {
 		if("GET" in COOKIE) {
 			prt_conn("\r\nSet-Cookie: GET=; expires=Sun, 27-May-2007 23:21:12 GMT");
 		}
@@ -1096,6 +1063,1126 @@ class Core {
 		assert(cur_session !is null);
 		assert(cur_conn.session !is null);
 		assert(cur_session == cur_conn.session);
+	}
+	
+	void process_cookie(string qs) {
+		//TODO!!!! - write unittests for this function
+		//OPTIMIZE! - surely this can be done faster... cleanse_url_string is slow.
+		size_t len = qs.length;
+		size_t eq = 0;
+		size_t last_amp = 0;
+		size_t i = 0;
+		while(i < len) {
+			if(eq == 0 && qs[i] == '=') {
+				eq = i;
+			}
+			
+			if((qs[i] == ' ' && qs[i-1] == ';') || i+1 == len) {
+				if(i+1 == len) {
+					i+=2;
+				}
+				
+				string key;
+				if(eq > last_amp) {
+					key = qs[last_amp .. eq++];
+				}
+				
+				string value;
+				if(eq > last_amp) {
+					value = cleanse_url_string(qs[eq .. i-1]);
+					cur_conn.COOKIE[key] = value;
+					if(key == "SID") {
+						cur_conn.sid = value;
+					} else if(key == "L") {
+						cur_session.lang = value;
+					} else if(key == "GET") {
+						process_qs(value.dup);
+					}
+				}
+				
+				assert(i >= len || (qs[i] == ' ' && qs[i-1] == ';'));
+				last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
+				eq = 0;
+			}
+			
+			i++;
+		}
+	}
+	
+	void process_qs(string qs) {
+		//OPTIMIZE! - surely this can be done faster... cleanse_url_string is slow.
+		string query_string = cur_conn.query_string;
+		size_t len = qs.length;
+		size_t eq = 0;
+		size_t last_amp = 0;
+		size_t i = 0;
+		while(i < len) {
+			if(qs[i] == '=') {
+				eq = i;
+			}
+			
+			if(qs[i] == '&' || i+1 == len) {
+				if(i+1 == len) {
+					i++;
+				}
+				
+				string key;
+				if(eq > last_amp) {
+					key = qs[last_amp .. eq++];
+				}
+				
+				string value;
+				if(eq > last_amp) {
+					value = cleanse_url_string(qs[eq .. i]);
+				
+					// do stuff
+					if(key.length > 2 && key[0] == 'f' && key[1] == '_') {
+						cur_conn.FUNC[key[2 .. $]] = value;
+					} else {
+						cur_conn.POST[key] = value;
+						if(key.length == 1 && key[0] == 'f' && cur_conn.content_len > 0) {
+							cur_conn.func_name = value;
+						} else if(key == "L") {
+							cur_session.lang = value;
+						} else if(key != "y" && key != "wid") {
+							if(query_string.length == 0) {
+								query_string = qs[last_amp .. i];
+							} else {
+								query_string ~= qs[last_amp-1 .. i];
+							}
+						}
+					}
+				}
+				
+				assert(i == len || qs[i] == '&');
+				last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
+			}
+			
+			i++;
+		}
+		
+		cur_conn.orig_qs = qs;
+		cur_conn.query_string = query_string;
+	}
+	
+	void process_post() {
+		debug noticeln("PROCESS POST");
+		// this function referenences data already in the buffer, because process_post always happens in the same pass as the request processing.
+		string post = cur_conn.input[cur_conn.header_len .. $];
+		assert(post[0] != '\r');
+		assert(post[0] != '\n');
+		bool not_boundary = false;
+		size_t i, j, k;
+		
+		for(i = 0; i < post.length; i++) {
+			if(post[i] == '=') {
+				not_boundary = true;
+				break;
+			} else if(post[i] == '\r') {
+				break;
+			}
+		}
+		
+		if(not_boundary) {
+			string qs = post;
+			string query_string = cur_conn.query_string;
+			size_t len = qs.length;
+			size_t eq = 0;
+			size_t last_amp = 0;
+			while(i < len) {
+				if(qs[i] == '=') {
+					eq = i;
+				}
+				
+				if(qs[i] == '&' || i+1 == len) {
+					if(i+1 == len) {
+						i++;
+					}
+					
+					string key;
+					if(eq > last_amp) {
+						key = qs[last_amp .. eq++];
+					}
+					
+					string value;
+					if(eq > last_amp) {
+						value = cleanse_url_string(qs[eq .. i]);
+					
+						// do stuff
+						if(key.length > 2 && key[0] == 'f' && key[1] == '_') {
+							FUNC[key[2 .. $]] = value;
+						} else {
+							POST[key] = value;
+							if(key.length == 1 && key[0] == 'f') {
+								func_name = value;
+							} else if(key != "y" && key != "wid") {
+								if(query_string.length == 0) {
+									query_string = qs[last_amp .. i];
+								} else {
+									query_string ~= qs[last_amp-1 .. i];
+								}
+							}
+						}
+					}
+					
+					
+					
+					//assert(qs[i] == '&' || i == len);
+					last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
+				}
+				
+				i++;
+			}
+			
+			cur_conn.query_string = query_string;
+			
+		} else {
+			// this is multipart form data
+			
+			// set the end of the line to 0 (for safety's sake)
+			//post[i+1] = '\0';
+			string boundary = post[0 .. i+1];
+			string disposition = null;
+			string type = null;
+			
+			size_t endl = 0;
+			size_t l = post.length;
+			for(k = i; k < l; k++) {
+				if(post[k] >= 'A' && post[k] <= 'Z') {
+					if(endl < k) {
+						for(size_t t = k; t < l; t++) {
+							if(post[t] == '\r' && post[t+1] == '\n') {
+								endl = t;
+								break;
+							}
+						}
+					}
+					
+					if(disposition == null) {
+						if(str_cmp(&post[k], "Content-Disposition: ")) {
+							j = k + "Content-Disposition: ".length;
+							disposition = trim(post[j .. endl]);
+						}
+					}
+					
+					if(type == null) {
+						if(str_cmp(&post[k], "Content-Type: ")) {
+							j = k + "Content-Type: ".length;
+							type = trim(post[j .. endl]);
+						}
+					}
+					
+					if(post[endl+2] == '\r' && post[endl+3] == '\n') {
+						string data;
+						i = find(post, boundary, k);
+						if(i != -1) {
+							data = post[endl+4 .. ++i];
+							k = i + boundary.length;
+						} else {
+							data = post[endl+4 .. $];
+							k = post.length;
+						}
+						
+						size_t name_loc = find(disposition, `name="`);
+						size_t end_name_loc;
+						if(name_loc != -1) {
+							name_loc += `name="`.length;
+							end_name_loc = find(disposition, '"', name_loc);
+						}
+						
+						if(name_loc != -1 && end_name_loc != -1) {
+							string name = disposition[name_loc .. end_name_loc];
+							if(name.length > 2 && name[1] == '_' && name[0] == 'f') {
+								FUNC[name[2 .. $]] = data;
+								
+								size_t filename_loc = find(disposition, `filename="`);
+								if(filename_loc != -1) {
+									filename_loc += `filename="`.length;
+									assert(disposition[filename_loc] != '"');
+									size_t end_filename_loc = find(disposition, '"', filename_loc);
+									if(end_filename_loc != -1) {
+										FUNC[name[2 .. $] ~ "_filename"] = disposition[filename_loc .. end_filename_loc];
+										POST[name[2 .. $] ~ "_type"] = type;
+									}
+								}
+							} else {
+								if(name == "f") {
+									func_name = data;
+								} else {
+									POST[name] = data;
+									if(name != "y" && name != "wid") {
+										string query_string = cur_conn.query_string;
+										if(query_string.length == 0) {
+											query_string = name ~ '=' ~ data;
+										} else {
+											query_string ~= '&' ~ name ~ '=' ~ data;
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	int process_header() {
+		size_t j, k, l;
+		bool keepalive;
+		uint wid;
+		string req_header = cur_conn.input;
+		l = cast(uint)req_header.length;
+		cur_conn.query_string = "";
+		
+		if(req_header[0] == 'G') {
+			// GET /lala?yeah=true HTTP/1.1
+			// |---^
+			j = k = 4;
+			cur_conn.content_len = 0;
+		} else if(req_header[0] == 'P') {
+			// POST /lala?yeah=true HTTP/1.1
+			// |----^
+			j = k = 5;
+			cur_conn.content_len = -1;
+		} else {
+			prt_conn("HTTP/1.1 500 Internal Server Error\r\n");
+			debug errorln("500 error:\n", req_header);
+			return -1;
+		}
+		
+		assert(req_header[k] != ' ');
+		assert(req_header[k] == '/');
+		for(; k < l; k++) {
+			if(req_header[k] == ' ') {
+				string uri = req_header[j .. k];
+				auto len = find(uri, '?');
+				if(len != -1) {
+					cur_conn.doc = uri[0 .. len];
+					process_qs(uri[++len .. $]);
+				} else {
+					cur_conn.doc = uri;
+					cur_conn.orig_qs.length = 0;
+				}
+				
+				//GET /lala?yeah=true HTTP/1.0
+				//                   |-------^
+				k += 8;
+				keepalive = (req_header[k] == '0' ? false : true); // HTTP/1.0 doesn't support keepalive
+				
+				k++;
+				if(req_header[k] == '\r' && req_header[k+1] == '\n') { 
+					k += 2;
+					break;
+				} else {
+					prt_conn("HTTP/1.1 500 Internal Server Error\r\n");
+					debug errorln("500 error:\n", req_header);
+					return -1;
+				}
+			}
+		}
+		
+		size_t endl = 0;
+		for(; k < l; k++) {
+			if(req_header[k] >= 'A' && req_header[k] <= 'Z') {
+				if(endl < k) {
+					for(size_t t = k; t < l; t++) {
+						if(req_header[t] == '\r' && req_header[t+1] == '\n') {
+							endl = t;
+							break;
+						}
+					}
+				}
+				
+				if(cur_conn.content_len == -1) {
+					if(str_cmp(&req_header[k], "Content-Length: ")) {
+						j = k + "Content-Length: ".length;
+						cur_conn.content_len = toUint(req_header[j .. endl]);
+					}
+				}
+				
+				if(cur_conn.browser == -1) {
+					if(str_cmp(&req_header[k], "User-Agent: ")) {
+						j = k + "User-Agent: ".length;
+						string agent = tango.text.Ascii.toLower(req_header[j .. endl]);
+						size_t loc = find(agent, "msie");
+						if(loc != -1) {
+							cur_conn.browser = BROWSER.MSIE;
+							if(agent.length > loc+6) {
+								char ver = agent[loc+6];
+								if(ver == '6') {
+									cur_conn.browser_version = 6;
+								} else if(ver == '7') {
+									cur_conn.browser_version = 7;
+								} else {
+									cur_conn.browser_version = -1;
+								}
+							}
+						} else if(find(agent, "gecko") != -1) {
+							cur_conn.browser = BROWSER.MOZILLA;
+							//TODO!!! - add the version number check
+						} else if(find(agent, "opera") != -1) {
+							cur_conn.browser = BROWSER.OPERA;
+							//TODO!!! - add the version number check
+						} else if(find(agent, "safari") != -1) {
+							cur_conn.browser = BROWSER.SAFARI;
+							//TODO!!! - add the version number check
+						} else if(find(agent, "validator") != -1) {
+							cur_conn.browser = BROWSER.VALIDATOR;
+						} else {
+							cur_conn.browser = BROWSER.OTHER;
+						}
+					}
+				}
+	
+				// There is NOTHING that I serve that ever checks modification time. We always change file names...
+				if(str_cmp(&req_header[k], "If-Modified-Since: ")) {
+					debug noticeln("found if modified...!!!!");
+					prt_conn("HTTP/1.1 304 Not Modified\r\n");
+					return -1;
+				}
+				
+				if(str_cmp(&req_header[k], "Accept-Encoding: ")) {
+					j = k + "Accept-Encoding: ".length;
+					if(find(req_header[j .. endl], "gzip") != -1) {
+						cur_conn.gzip = true;
+					} else {
+						cur_conn.gzip = false;
+					}
+				}
+				
+				if(keepalive && str_cmp(&req_header[k], "Connection: ")) {
+					j = k + "Connection: ".length;
+					if(cur_conn.keepalive == false && str_cmp(&req_header[j], "keep-alive")) {
+						cur_conn.keepalive = true;
+					} else if(str_cmp(&req_header[j], "close")) {
+						cur_conn.keepalive = false;
+					}
+				}
+				
+				if(keepalive && str_cmp(&req_header[k], "Keep-Alive: ")) {
+					j = k + "Keep-Alive: ".length;
+					uint keepalive_time = toUint(req_header[j .. endl]);
+					//TODO!! - set the keepalive timeout
+				}
+				
+				if(str_cmp(&req_header[k], "Cookie: ")) {
+					j = k + "Cookie: ".length;
+					debug noticeln("Cookie: ", req_header[j .. endl]);
+					process_cookie(req_header[j .. endl]);
+				}
+				
+				if(req_header[endl+2] == '\r' && req_header[endl+3] == '\n') {
+					if(cur_conn.content_len == -1) {
+						debug errorln("411 Length Required:\n", req_header);
+						prt_conn("HTTP/1.0 411 Length Required\r\n");
+						return -1;
+					}
+					
+					Core.get_session();
+					return cast(int)endl+4;
+				}
+			}
+		}
+		
+		return 0;
+	}
+	
+	int main_loop() {
+		//GC.minimize();
+		
+		ubyte[16] ip_incoming;
+		auto s = socket_tcp4();
+		socket_bind4_reuse(s, settings.bind_ip.ptr, settings.bind_port);
+		
+		// LISTEN
+		auto sock_listen = socket_listen(s, 16);
+		if(sock_listen == -1) {
+			errorln("could not listen");
+			return 111;
+		}
+		
+		//io_nonblock(s);
+		if(!io_fd(s)) {
+			errorln("could not get a file descriptor");
+			return 112;
+		}
+		
+		io_wantread(s);
+		
+		debug {
+			noticeln("accepting connections on ", cast(char)settings.bind_ip[0], ".", cast(char)settings.bind_ip[1], ".", cast(char)settings.bind_ip[2], ".", cast(char)settings.bind_ip[3], ":", cast(int)settings.bind_port, " ...");
+		} else {
+			noticeln("accepting connections...");
+		}
+		
+		// END LISTEN
+		
+		
+		// main loop
+		char[4096] req_data;
+		while(true) {
+			// process tasks
+			ptrdiff_t update_offset = periodic_updates.length-1;
+			if(update_offset >= 0) {
+				do {
+					periodic_updates[update_offset]();
+				} while(update_offset--);
+			}
+			
+			// wait up to one second and loop again to do garbage collection / maintenance
+			io_waituntil2(1000);
+		
+			//GC.disable();
+			bool do_gc = true;
+			double begin_loop = microtime();
+			double now = begin_loop;
+			request_time = cast(int)time(null);
+			
+			// can write
+			int writes = 0;
+			while(++writes <= 50 && (cur_sock = cast(uint)io_canwrite()) != -1) {
+				double begin_write = microtime();
+				
+				do_gc = false;
+				dyn_connection* conn = cast(dyn_connection*)io_getcookie(cur_sock);
+				
+				if(conn) {
+					if(cur_conn.cur_stage == 2) {
+						cur_conn.cur_stage = 3;
+						conn.begin_writing = microtime();
+						dyn_connection.reading--;
+						dyn_connection.writing++;
+					}
+					
+					assert(conn.socket == cur_sock);
+					ulong how_much = conn.output_len - conn.cur_ptr;
+					ulong ideal = how_much;
+					if(ideal > 8000) {
+						ideal = 8000;
+					} else if(ideal < 4000 && ideal <= how_much) {
+						ideal = 4000;
+					}
+					
+					if(how_much > ideal) {
+						how_much = ideal;
+					}
+					
+					void* output;
+					if(conn.output_file == null) {
+						output = conn.output;
+					} else {
+						output = conn.output_file;
+					}
+					
+					auto l = io_trywritetimeout(cur_sock, cast(char*)output + conn.cur_ptr, how_much);
+					
+					if(l == -3 || l == -2) {
+						conn.end();
+					} else if(l+conn.cur_ptr == conn.output_len) {
+						debug noticeln("connection success ", cur_sock);
+						//conn.output.length = 0;
+						if(conn.keepalive) {
+							//io_dontwantwrite(i);
+							//io_wantread(i);
+							//TODO!! - use keepalive properly
+							conn.end();
+						} else {
+							//io_dontwantwrite(i);
+							conn.end();
+						}
+					} else if(l > 0) {
+						conn.cur_ptr += l;
+					}
+				} else {
+					//io_dontwantwrite(i);
+					io_close(cur_sock);
+				}
+				
+				now = microtime();
+				printf("writing time: %0.2fms\n", (now - begin_write) * 0.001);
+			}
+			
+			int reads = 0;
+			while(++reads <= 5 && (cur_sock = cast(uint)io_canread()) != -1) {
+				do_gc = false;
+				
+				if(cur_sock == s) {
+					double begin_connect = microtime();
+					// new connection. put it in a different socket
+					int n;
+					uint connects = 10 + dyn_connection.reading + dyn_connection.writing - dyn_connection.connected;
+					// && dyn_connection.connected <= dyn_connection.reading + 10
+					while(dyn_connection.used <= MAX_CONNECTIONS && --connects && (n = socket_accept4(s, cast(char*)ip_incoming.ptr, &settings.bind_port)) != -1) {
+						cur_sock = n;
+						io_nonblock(n);
+						if(io_fd(n)) {
+							cur_conn = dyn_connection.connect();
+							cur_conn.begin_connect = begin_connect;
+							dyn_connection.connected++;
+							cur_conn.socket = n;
+							cur_conn.cur_stage = 1;
+							cur_conn.ip[0 .. 4] = cast(ubyte[])ip_incoming[0 .. 4];
+							io_wantread(n);
+							io_setcookie(n, cur_conn);
+						} else {
+							errorln("io failed");
+						}
+					}
+					
+					now = microtime();
+					printf("connecting time: %0.2fms\n", (now - begin_connect) * 0.001);
+				} else {
+					double begin_read = microtime();
+					bool error = false;
+					auto l = io_tryreadtimeout(cur_sock, &req_data[0], 4096);
+					
+					if(l > 0) {
+						cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
+						if(cur_conn.cur_stage == 1) {
+							cur_conn.cur_stage = 2;
+							cur_conn.begin_reading = begin_read;
+							dyn_connection.connected--;
+							dyn_connection.reading++;
+						}
+						
+						cur_conn.input ~= req_data[0 .. l];
+						if(cur_conn.output_file == null && cur_conn.input.length > 4) {
+							cur_conn.header_len = process_header();
+							
+							if(cur_conn.header_len == -1) { // header needs to write immediately..
+								io_wantwrite(cur_conn.socket);
+								break;
+							}
+						}
+						
+						if(cur_conn.header_len > 0) {
+							cur_conn.end_reading = cur_conn.begin_processing = microtime();
+							debug noticeln("doc: '", cur_conn.doc, "' ", cur_conn.socket, " qs: '", cur_conn.orig_qs, "'");
+							
+							char last_char = cur_conn.doc[$-1];
+							string doc = cur_conn.doc[1 .. $];
+							void** file_ptr;
+							
+							if(last_char != '/') {
+								if(cur_conn.gzip) {
+									file_ptr = doc in FILES_GZIP;
+								} else {
+									file_ptr = doc in FILES;
+								}
+							}
+							
+							if(last_char == '/' || (cur_conn.orig_qs.length > 0 && !file_ptr)) {
+								if(cur_conn.content_len && cur_conn.content_len + cur_conn.header_len != cur_conn.input.length) {
+									// this prevents trying to render the page, if there is a POST, and it's not fully downloaded yet
+									debug noticeln("breaking ", cur_conn.content_len + cur_conn.header_len, " ", cur_conn.input.length, "\n\n");
+									continue;
+								}
+								
+								
+								// the reason why all of this goes above, is because process_post will write directly to the global, not the connection structure
+								.uid = cur_conn.uid;
+								.sid = cur_conn.sid.dup;
+								.wid = cur_conn.wid;
+								.POST = cur_conn.POST;
+								.FUNC = cur_conn.FUNC;
+								.COOKIE = cur_conn.COOKIE;
+								.func_name = cur_conn.func_name;
+								.browser_type = cur_conn.browser;
+								.browser_version = cur_conn.browser_version;
+								.ip4 = *cast(uint*)(&cur_conn.ip[0]);
+								debug noticeln("IP: ", ip4);
+								
+								if(cur_conn.content_len) {
+									process_post();
+								}
+								
+								if(cur_conn.doc == "/d/" && wid) {
+									errorln("TODO!! - add the dynamic back");
+									//do_dynamic();
+								} else {
+									Core.do_page_request();
+									io_wantwrite(cur_conn.socket);
+								}
+							} else {
+								
+								
+								if(file_ptr) {
+									cur_conn.output_file = ((cast(char*)(*file_ptr)) +4);
+									cur_conn.output_len = *cast(uint*)(*file_ptr);
+								} else {
+									
+									//TODO!! - change this to AIO in the C library, cuse this is slow.
+									//OPTIMIZE!! - perhaps I can remember the biggest size file, then serve that size, instead of duplicating the thumbs
+									//OPTIMIZE!! - I have found that 1 in about 7 files really benefits from gzip encoding... if it does benefit, then I can
+									if(doc.length > 2 && doc[0] == 'j' && doc[1] == '/') {
+										string photo = doc[2 .. $];
+										//TODO!!!! temporary, so my computer doesn't suck... delete me!
+										if(find(photo, '/') != -1) {
+											goto error;
+										}
+										// j/[size][hash]
+										
+										int exists;
+										string real_file;
+										int photo_type;
+										if(photo.length > 7) {
+											real_file = get_real_filename(photo);
+											photo_type = get_photo_type(photo);
+											//exists = std.file.exists(real_file);
+											exists = Path.exists(real_file);
+											if(!exists && doc.length > 9) {
+												exists = process_photo(photo);
+											}
+										} else if(photo[0] == 'n' && photo[1] == 'f') {
+											real_file = "/j/" ~ photo;
+											photo_type = PHOTO_INFO.JPG;
+											exists = Path.exists(real_file);
+											if(!exists) {
+												exists = process_nf(photo);
+											}
+										}
+										
+										if(exists) {
+											string data = cast(char[])File.get(real_file);
+											string type;
+											type.length = 20;
+											switch(photo_type) {
+											case PHOTO_INFO.JPG:
+												type = "image/jpeg";
+												break;
+											
+											case PHOTO_INFO.GIF:
+												type = "image/gif";
+												break;
+											
+											case PHOTO_INFO.PNG:
+												type = "image/png";
+												break;
+											
+											default:
+												goto error;
+											}
+											
+											int file_len = cast(int)data.length;
+											data = "\x1f\x8b\x08\x00\x00\x00\x00\x00" ~ cast(char[])compress(data, 9);
+											debug printf("compressed from %d to %d (%0.1f%% of orig size)\n", file_len, data.length, (cast(float)data.length / file_len)*100);
+											prt_conn("HTTP/1.1 200 OK"
+											"\r\nContent-Encoding: gzip"
+											"\r\nExpires: Wed, 28 Dec 2011 11:11:00 GMT"
+											"\r\nContent-Type: " ~ type ~
+											//"\r\nLast-Modified: Fri, 26 Oct 1985 11:11:00 GMT"
+											"\r\nContent-Length: " ~ Integer.toString(file_len) ~
+											"\r\n\r\n" ~ data);
+										}
+									} else {
+										prt_conn("HTTP/1.1 404 OK"
+											"\r\nContent-Type: text/html"
+											"\r\n\r\n"
+											"<h2>not found</h2>");
+									}
+								}
+								
+								io_wantwrite(cur_conn.socket);
+							}
+							
+							//TODO!! save session here, so I can track how many files were downloaded for each user as well...
+							//that would help me to see if someone is scripting the site or not, because someone who is not downloading a single file in a short period of time = a script
+							
+							cur_conn.end_processing = microtime();
+						}
+					} else if(l == -3 || l == -2) {
+						goto error;
+					}
+					
+					
+					
+					
+					if(error) {
+error:				cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
+						//io_close(cur_sock);
+						errorln("closed with error");
+						if(cur_conn) {
+							cur_conn.end();
+						}
+					}
+					
+					now = microtime();
+					printf("reading/processing time: %0.2fms\n", (now - begin_read) * 0.001);
+				}
+			}
+			
+			// CONNECTION IS CLOSED, NOW CLEAN UP:
+			//GC.enable();
+			
+			// reset globals
+			PANELS = null;
+			Core.js_out = null;
+			func_name = null;
+			title = null;
+			func_ret = 0;
+			zid = is_me = 0;
+			
+			stats.since_gc++;
+			
+			// next, if the timestamp is different, then I know to start garbage collecting connections and the memory
+			if(last_request_time != request_time) {
+				last_request_time = request_time;
+				
+				if(dyn_connection.connected - dyn_connection.reading - dyn_connection.writing > 0) {
+					uint d;
+					while((d = io_timeouted()) != -1) {
+						//io_close(d);
+						cur_conn = cast(dyn_connection*)io_getcookie(d);
+						//io_close(cur_sock);
+						errorln("closed with timeout");
+						if(cur_conn) {
+							cur_conn.end();
+						}
+					}
+				}
+				
+				//uint collected = dyn_connection.release_connections(request_time - SECONDS_TO_RECONNECT);
+				//debug noticeln("collected ", collected, " connections..");
+				
+				// output in a big block to the log file...
+				
+				
+			}
+			
+			if(dyn_connection.connected || dyn_connection.reading || dyn_connection.writing) {
+				do_gc = false;
+			}
+			
+			if(do_gc || stats.since_gc > 500) {
+				//if(stats.since_gc > 5) {
+				//noticeln("FULL COLLECT ", stats.since_gc);
+				stats.since_gc = 0;
+				GC.collect();
+				//}
+			}
+			
+			if(!do_gc) {
+				printf(" >> loop time: %0.2fms (%d/%d/%d) connected/reading/writing\n--------------\n", (now - begin_loop) * 0.001, dyn_connection.connected, dyn_connection.reading, dyn_connection.writing);
+			}
+		}
+		
+		io_close(s);
+		return 0;
+	}
+	
+	void serve_dir(string location, string prefix) {
+		if(location[$-1] != '/') {
+			location ~= '/';
+		}
+		
+		if(prefix[$-1] != '/') {
+			prefix ~= '/';
+		}
+		
+		bool serve_dir_helper(FilePath fp) {
+			string file = fp.toString();
+			string f_orig = file;
+			auto off = find(file, '/');
+			while(off != -1) {
+				file = file[++off .. $];
+				off = find(file, '/');
+			}
+			
+			string tmp = f_orig[location.length .. $];
+			string data = cast(string)File.get(f_orig);
+			serve_file(f_orig, prefix ~ tmp[0 .. $-file.length], data, null);
+			return true;
+		}
+		
+		scan_dir(FilePath(location), &serve_dir_helper);
+	}
+	
+	void serve_file(string filename, string prefix, string data, string type) {
+		int file_len = cast(int)data.length;
+		if(file_len == 0) {
+			debug noticeln("file '", filename, "' is empty. ignoring");
+			return;
+		}
+		
+		string file = filename;
+		auto off = find(filename, '/');
+		while(off != -1) {
+			file = filename[++off .. $];
+			off = find(filename, '/', off);
+		}
+		
+		file = prefix ~ file;
+		noticeln("preparing file: ", file);
+		
+		bool is_text = false;
+		string output;
+		if(type.length == 0) {
+			type.length = 20;
+			char[4] ext = filename[$-4 .. $];
+			if(ext[1] == '.') {
+				ext[0] = ' ';
+			}
+			
+			switch(ext) {
+			case ".css":
+				type = "text/css";
+				break;
+				
+			case " .js":
+				type = "text/javascript";
+				break;
+				
+			case "jpeg":
+			case ".jpg":
+				type = "image/jpeg";
+				break;
+			
+			case ".gif":
+				type = "image/gif";
+				break;
+			
+			case ".png":
+				type = "image/png";
+				break;
+			
+			case ".ico":
+				type = "image/x-icon";
+				break;
+			
+			case ".swf":
+				type = "application/x-shockwave-flash";
+				break;
+			
+			case ".pdf":
+				type = "application/pdf";
+				break;
+			
+			case ".mp3":
+				type = "audio/mpeg";
+				break;
+			
+			case ".m3u":
+				type = "audio/x-mpegurl";
+				break;
+			
+			case ".dtd":
+			case ".xml":
+				type = "text/xml";
+				break;
+			
+				
+			default:
+				type = "text/html";
+			}
+		}
+		
+		if(type[0 .. 4] == "text") {
+			is_text = true;
+		}
+		
+		if(settings.optimize_resources) {
+			switch(type) {
+			case "text/css":
+				auto orig_len = data.length;
+				data = css_optimizer(data);
+				printf("obfuscated from %d to %d (%0.1f of orig size)\n", orig_len, data.length, (cast(float)data.length / orig_len)*100);
+				break;
+				
+			case "text/javascript":
+				auto orig_len = data.length;
+				data = js_optimizer(data);
+				printf("obfuscated from %d to %d (%0.1f of orig size)\n", orig_len, data.length, (cast(float)data.length / orig_len)*100);
+				break;
+			}
+		}
+		
+		
+		uint* ptr;
+		string tmp = "HTTP/1.1 200 OK"
+		"\r\nExpires: Wed, 28 Dec 2011 11:11:00 GMT"
+		"\r\nContent-Type: " ~ type ~
+		"\r\nContent-Length: " ~ Integer.toString(file_len) ~
+		"\r\n\r\n" ~ data;
+		
+		ptr = cast(uint*)malloc(tmp.length+4);
+		*ptr = cast(uint)tmp.length;
+		FILES[file] = ptr;
+		memcpy((cast(void*)ptr) + 4, tmp.ptr, tmp.length);
+		
+		//std.gc.hasNoPointers(&FILES);
+		
+		if(is_text && data.length > 100) {
+			int data_len = cast(int)data.length;
+			data = "\x1f\x8b\x08\x00\x00\x00\x00\x00" ~ cast(char[])compress(trim(data), 9);
+			printf("compressed from %d to %d (%0.1f%% of orig size)\n", data_len, data.length, (cast(float)data.length / file_len)*100);
+			file_len = cast(int)data.length;
+			
+			//FILES_GZIP[file]
+			tmp = "HTTP/1.1 200 OK"
+			"\r\nExpires: Wed, 28 Dec 2011 11:11:00 GMT"
+			"\r\nContent-Encoding: gzip"
+			"\r\nContent-Type: " ~ type ~
+			"\r\nContent-Length: " ~ Integer.toString(file_len) ~
+			"\r\n\r\n" ~ data;
+			
+			ptr = cast(uint*)malloc(tmp.length+4);
+			*ptr = cast(uint)tmp.length;
+			memcpy((cast(void*)ptr) + 4, tmp.ptr, tmp.length);
+		}
+		
+		FILES_GZIP[file] = ptr;
+		
+		//std.gc.hasNoPointers(&FILES_GZIP);
+	}
+	
+	void parse_config(string config_file) {
+		debug noticeln("-- parsing config");
+		string* val;
+		config_file = cast(string)File.get(config_file);
+		config_file = replace(config_file, '\n', ',');
+		config_file = clean_text(config_file);
+		string[string] c_config;
+		
+		c_config.parse_options(config_file);
+		
+		
+		/*
+		val = "edb.host" in c_config;
+		assert(val, "You need to add the parameter 'edb.host' to your config");
+		if(val) {
+			settings.edb_host = *val;
+		}
+		
+		val = "edb.port" in c_config;
+		if(val) {
+			settings.edb_port = toUint(*val);
+		}
+		
+		val = "edb.namespace" in c_config;
+		if(val) {
+			settings.edb_ns = *val;
+		}
+		*/
+		
+		val = "root_dir" in c_config;
+		if(val) {
+			debug {
+				if(!Path.exists(*val)) {
+					throw new Exception("root directory (" ~ *val ~ ") does not exist");
+				}
+			}
+			
+			settings.root_dir = *val;
+		}
+		
+		val = "lang_dir" in c_config;
+		assert(val, "You need to add the parameter 'lang_dir' to your config");
+		if(val) {
+			settings.lang_dir = *val;
+		}
+		
+		val = "panels_dir" in c_config;
+		assert(val, "You need to add the parameter 'panels_dir' to your config");
+		if(val) {
+			settings.panels_dir = *val;
+		}
+		
+		val = "resources" in c_config;
+		assert(val, "You need to add the parameter 'resources' to your config");
+		if(val) {
+			settings.resources_dir = *val;
+		}
+		
+		val = "files" in c_config;
+		assert(val, "You need to add the parameter files in your config");
+		if(val) {
+			settings.static_files = *val;
+		}
+		
+		val = "ouput_buffer_size" in c_config;
+		if(val) {
+			settings.output_buffer_size = toUint(*val);
+		} else {
+			settings.output_buffer_size = (1024*512)-1;
+		}
+		
+		val = "site_url" in c_config;
+		assert(val, "You need to add the parameter 'site_url' to your config");
+		if(val) {
+			settings.site_url = *val;
+		}
+		
+		val = "bind_port" in c_config;
+		assert(val, "You need to add the parameter 'bind_port' to your config");
+		if(val) {
+			settings.site_port = *val;
+			settings.bind_port = toUint(*val);
+		}
+		
+		val = "bind_ip" in c_config;
+		assert(val, "You need to add the parameter 'bind_ip' to your config");
+		if(val) {
+			string site_ip = *val;
+			assert(site_ip.length >= 7 && site_ip.length <= 16, "you have an incorrectly formed 'bind_ip' in your config");
+			//4.2.2.1
+			int i;
+			int last = 0;
+			int offset = 0;
+			do {
+				if(site_ip[i] == '.') {
+					settings.bind_ip[offset++] = cast(ubyte)toUint(site_ip[last .. i]);
+					last = i+1;
+				}
+			} while(++i < site_ip.length);
+			
+			assert(offset == 3);
+			settings.bind_ip[3] = cast(ubyte)toUint(site_ip[last .. $]);
+		}
+		
+		val = "optimize_resources" in c_config;
+		if(val) {
+			settings.optimize_resources = cast(bool)toUint(*val);
+		}
+		
+		val = "reload_panels" in c_config;
+		if(val) {
+			settings.reload_panels = cast(bool)toUint(*val);
+		}
+		
+		val = "reload_resources" in c_config;
+		if(val) {
+			settings.reload_resources = cast(bool)toUint(*val);
+		}
+		
+		val = "preserve_newlines" in c_config;
+		if(val) {
+			settings.preserve_newlines = cast(bool)toUint(*val);
+		}
+		
+		debug {
+			noticeln("optimize_resources: ", settings.optimize_resources);
+			noticeln("reload_resources: ", settings.reload_resources);
+			noticeln("reload_panels: ", settings.reload_panels);
+			noticeln("preserve_newlines: ", settings.preserve_newlines);
+		}
+	}
+	
+	void load_files() {
+		if(settings.static_files.length) {
+			
+			string[string] files;
+			files.parse_options(settings.static_files);
+			foreach(real_name, file_loc; files) {
+				FilePath fp = new FilePath(file_loc);
+				if(fp.isFolder()) {
+					Core.serve_dir(file_loc, real_name);
+				} else {
+					string data = cast(string)File.get(file_loc);
+					Core.serve_file(file_loc, "", data, null);
+				}
+			}
+		}
 	}
 }
 
@@ -1222,55 +2309,11 @@ the lists where the version has changed.
 	return error;
 }*/
 
-void process_cookie(string qs) {
-	//TODO!!!! - write unittests for this function
-	//OPTIMIZE! - surely this can be done faster... cleanse_url_string is slow.
-	size_t len = qs.length;
-	size_t eq = 0;
-	size_t last_amp = 0;
-	size_t i = 0;
-	while(i < len) {
-		if(eq == 0 && qs[i] == '=') {
-			eq = i;
-		}
-		
-		if((qs[i] == ' ' && qs[i-1] == ';') || i+1 == len) {
-			if(i+1 == len) {
-				i+=2;
-			}
-			
-			string key;
-			if(eq > last_amp) {
-				key = qs[last_amp .. eq++];
-			}
-			
-			string value;
-			if(eq > last_amp) {
-				value = cleanse_url_string(qs[eq .. i-1]);
-				cur_conn.COOKIE[key] = value;
-				if(key == "SID") {
-					cur_conn.sid = value;
-				} else if(key == "L") {
-					cur_session.lang = value;
-				} else if(key == "GET") {
-					process_qs(value.dup);
-				}
-			}
-			
-			assert(i >= len || (qs[i] == ' ' && qs[i-1] == ';'));
-			last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
-			eq = 0;
-		}
-		
-		i++;
-	}
-}
-
 
 unittest {
 	UNIT("dyn_connection #1", () {
 		cur_conn = new dyn_connection;
-		process_qs("f_mmm=1111&lala=1234&5=4&&y=");
+		Core.process_qs("f_mmm=1111&lala=1234&5=4&&y=");
 		assert("mmm" in cur_conn.FUNC);
 		assert(cur_conn.FUNC["mmm"] == "1111");
 		assert("lala" in cur_conn.POST);
@@ -1283,7 +2326,7 @@ unittest {
 	
 	UNIT("dyn_connection #2", () {
 		cur_conn = new dyn_connection;
-		process_qs("f=myfunc&z=j:home");
+		Core.process_qs("f=myfunc&z=j:home");
 		assert(cur_conn.func_name != "myfunc");
 		assert("z" in cur_conn.POST);
 		assert(cur_conn.POST["z"] == "j:home");
@@ -1291,7 +2334,7 @@ unittest {
 	
 	UNIT("dyn_connection #3", () {
 		cur_conn = new dyn_connection;
-		process_cookie("SID=123456789012345678901234566; GET=lala=1234&z=&mm=");
+		Core.process_cookie("SID=123456789012345678901234566; GET=lala=1234&z=&mm=");
 		assert("SID" in cur_conn.COOKIE);
 		assert(cur_conn.COOKIE["SID"] == "123456789012345678901234566");
 		assert("GET" in cur_conn.COOKIE);
@@ -1299,1063 +2342,33 @@ unittest {
 	});
 }
 
-void process_qs(string qs) {
-	//OPTIMIZE! - surely this can be done faster... cleanse_url_string is slow.
-	string query_string = cur_conn.query_string;
-	size_t len = qs.length;
-	size_t eq = 0;
-	size_t last_amp = 0;
-	size_t i = 0;
-	while(i < len) {
-		if(qs[i] == '=') {
-			eq = i;
-		}
-		
-		if(qs[i] == '&' || i+1 == len) {
-			if(i+1 == len) {
-				i++;
-			}
-			
-			string key;
-			if(eq > last_amp) {
-				key = qs[last_amp .. eq++];
-			}
-			
-			string value;
-			if(eq > last_amp) {
-				value = cleanse_url_string(qs[eq .. i]);
-			
-				// do stuff
-				if(key.length > 2 && key[0] == 'f' && key[1] == '_') {
-					cur_conn.FUNC[key[2 .. $]] = value;
-				} else {
-					cur_conn.POST[key] = value;
-					if(key.length == 1 && key[0] == 'f' && cur_conn.content_len > 0) {
-						cur_conn.func_name = value;
-					} else if(key == "L") {
-						cur_session.lang = value;
-					} else if(key != "y" && key != "wid") {
-						if(query_string.length == 0) {
-							query_string = qs[last_amp .. i];
-						} else {
-							query_string ~= qs[last_amp-1 .. i];
-						}
-					}
-				}
-			}
-			
-			assert(i == len || qs[i] == '&');
-			last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
-		}
-		
-		i++;
-	}
-	
-	cur_conn.orig_qs = qs;
-	cur_conn.query_string = query_string;
+
+
+extern(C) void sig_handler(int sig) {
+	stdoutln("caught signal... ", sig);
 }
 
-void process_post() {
-	debug noticeln("PROCESS POST");
-	// this function referenences data already in the buffer, because process_post always happens in the same pass as the request processing.
-	string post = cur_conn.input[cur_conn.header_len .. $];
-	assert(post[0] != '\r');
-	assert(post[0] != '\n');
-	bool not_boundary = false;
-	size_t i, j, k;
-	
-	for(i = 0; i < post.length; i++) {
-		if(post[i] == '=') {
-			not_boundary = true;
-			break;
-		} else if(post[i] == '\r') {
-			break;
-		}
-	}
-	
-	if(not_boundary) {
-		string qs = post;
-		string query_string = cur_conn.query_string;
-		size_t len = qs.length;
-		size_t eq = 0;
-		size_t last_amp = 0;
-		while(i < len) {
-			if(qs[i] == '=') {
-				eq = i;
-			}
-			
-			if(qs[i] == '&' || i+1 == len) {
-				if(i+1 == len) {
-					i++;
-				}
-				
-				string key;
-				if(eq > last_amp) {
-					key = qs[last_amp .. eq++];
-				}
-				
-				string value;
-				if(eq > last_amp) {
-					value = cleanse_url_string(qs[eq .. i]);
-				
-					// do stuff
-					if(key.length > 2 && key[0] == 'f' && key[1] == '_') {
-						FUNC[key[2 .. $]] = value;
-					} else {
-						POST[key] = value;
-						if(key.length == 1 && key[0] == 'f') {
-							func_name = value;
-						} else if(key != "y" && key != "wid") {
-							if(query_string.length == 0) {
-								query_string = qs[last_amp .. i];
-							} else {
-								query_string ~= qs[last_amp-1 .. i];
-							}
-						}
-					}
-				}
-				
-				
-				
-				//assert(qs[i] == '&' || i == len);
-				last_amp = i+1;  // plus 1, because it is the start of the string afte the amp
-			}
-			
-			i++;
-		}
-		
-		cur_conn.query_string = query_string;
-		
-	} else {
-		// this is multipart form data
-		
-		// set the end of the line to 0 (for safety's sake)
-		//post[i+1] = '\0';
-		string boundary = post[0 .. i+1];
-		string disposition = null;
-		string type = null;
-		
-		size_t endl = 0;
-		size_t l = post.length;
-		for(k = i; k < l; k++) {
-			if(post[k] >= 'A' && post[k] <= 'Z') {
-				if(endl < k) {
-					for(size_t t = k; t < l; t++) {
-						if(post[t] == '\r' && post[t+1] == '\n') {
-							endl = t;
-							break;
-						}
-					}
-				}
-				
-				if(disposition == null) {
-					if(str_cmp(&post[k], "Content-Disposition: ")) {
-						j = k + "Content-Disposition: ".length;
-						disposition = trim(post[j .. endl]);
-					}
-				}
-				
-				if(type == null) {
-					if(str_cmp(&post[k], "Content-Type: ")) {
-						j = k + "Content-Type: ".length;
-						type = trim(post[j .. endl]);
-					}
-				}
-				
-				if(post[endl+2] == '\r' && post[endl+3] == '\n') {
-					string data;
-					i = find(post, boundary, k);
-					if(i != -1) {
-						data = post[endl+4 .. ++i];
-						k = i + boundary.length;
-					} else {
-						data = post[endl+4 .. $];
-						k = post.length;
-					}
-					
-					size_t name_loc = find(disposition, `name="`);
-					size_t end_name_loc;
-					if(name_loc != -1) {
-						name_loc += `name="`.length;
-						end_name_loc = find(disposition, '"', name_loc);
-					}
-					
-					if(name_loc != -1 && end_name_loc != -1) {
-						string name = disposition[name_loc .. end_name_loc];
-						if(name.length > 2 && name[1] == '_' && name[0] == 'f') {
-							FUNC[name[2 .. $]] = data;
-							
-							size_t filename_loc = find(disposition, `filename="`);
-							if(filename_loc != -1) {
-								filename_loc += `filename="`.length;
-								assert(disposition[filename_loc] != '"');
-								size_t end_filename_loc = find(disposition, '"', filename_loc);
-								if(end_filename_loc != -1) {
-									FUNC[name[2 .. $] ~ "_filename"] = disposition[filename_loc .. end_filename_loc];
-									POST[name[2 .. $] ~ "_type"] = type;
-								}
-							}
-						} else {
-							if(name == "f") {
-								func_name = data;
-							} else {
-								POST[name] = data;
-								if(name != "y" && name != "wid") {
-									string query_string = cur_conn.query_string;
-									if(query_string.length == 0) {
-										query_string = name ~ '=' ~ data;
-									} else {
-										query_string ~= '&' ~ name ~ '=' ~ data;
-									}
-								}
-							}
-						}
-					}
-				}
-			}
-		}
+bool terminating = false;
+extern(C) void term_handler(int sig) {
+	if(terminating == false) {
+		stdoutln("signal ", sig, " caught...");
+		terminating = true;
+		terminate();
 	}
 }
 
-int process_header() {
-	size_t j, k, l;
-	bool keepalive;
-	uint wid;
-	string req_header = cur_conn.input;
-	l = cast(uint)req_header.length;
-	cur_conn.query_string = "";
+void terminate() {
+	Core.terminate();
 	
-	if(req_header[0] == 'G') {
-		// GET /lala?yeah=true HTTP/1.1
-		// |---^
-		j = k = 4;
-		cur_conn.content_len = 0;
-	} else if(req_header[0] == 'P') {
-		// POST /lala?yeah=true HTTP/1.1
-		// |----^
-		j = k = 5;
-		cur_conn.content_len = -1;
-	} else {
-		prt_conn("HTTP/1.1 500 Internal Server Error\r\n");
-		debug errorln("500 error:\n", req_header);
-		return -1;
+	// D termination (since we can't really make main() return):
+	_moduleDtor();
+	//gc_term();
+	version(linux) {
+		_STD_critical_term();
+		_STD_monitor_staticdtor();
 	}
 	
-	assert(req_header[k] != ' ');
-	assert(req_header[k] == '/');
-	for(; k < l; k++) {
-		if(req_header[k] == ' ') {
-			string uri = req_header[j .. k];
-			auto len = find(uri, '?');
-			if(len != -1) {
-				cur_conn.doc = uri[0 .. len];
-				process_qs(uri[++len .. $]);
-			} else {
-				cur_conn.doc = uri;
-				cur_conn.orig_qs.length = 0;
-			}
-			
-			//GET /lala?yeah=true HTTP/1.0
-			//                   |-------^
-			k += 8;
-			keepalive = (req_header[k] == '0' ? false : true); // HTTP/1.0 doesn't support keepalive
-			
-			k++;
-			if(req_header[k] == '\r' && req_header[k+1] == '\n') { 
-				k += 2;
-				break;
-			} else {
-				prt_conn("HTTP/1.1 500 Internal Server Error\r\n");
-				debug errorln("500 error:\n", req_header);
-				return -1;
-			}
-		}
-	}
-	
-	size_t endl = 0;
-	for(; k < l; k++) {
-		if(req_header[k] >= 'A' && req_header[k] <= 'Z') {
-			if(endl < k) {
-				for(size_t t = k; t < l; t++) {
-					if(req_header[t] == '\r' && req_header[t+1] == '\n') {
-						endl = t;
-						break;
-					}
-				}
-			}
-			
-			if(cur_conn.content_len == -1) {
-				if(str_cmp(&req_header[k], "Content-Length: ")) {
-					j = k + "Content-Length: ".length;
-					cur_conn.content_len = toUint(req_header[j .. endl]);
-				}
-			}
-			
-			if(cur_conn.browser == -1) {
-				if(str_cmp(&req_header[k], "User-Agent: ")) {
-					j = k + "User-Agent: ".length;
-					string agent = tango.text.Ascii.toLower(req_header[j .. endl]);
-					size_t loc = find(agent, "msie");
-					if(loc != -1) {
-						cur_conn.browser = BROWSER.MSIE;
-						if(agent.length > loc+6) {
-							char ver = agent[loc+6];
-							if(ver == '6') {
-								cur_conn.browser_version = 6;
-							} else if(ver == '7') {
-								cur_conn.browser_version = 7;
-							} else {
-								cur_conn.browser_version = -1;
-							}
-						}
-					} else if(find(agent, "gecko") != -1) {
-						cur_conn.browser = BROWSER.MOZILLA;
-						//TODO!!! - add the version number check
-					} else if(find(agent, "opera") != -1) {
-						cur_conn.browser = BROWSER.OPERA;
-						//TODO!!! - add the version number check
-					} else if(find(agent, "safari") != -1) {
-						cur_conn.browser = BROWSER.SAFARI;
-						//TODO!!! - add the version number check
-					} else if(find(agent, "validator") != -1) {
-						cur_conn.browser = BROWSER.VALIDATOR;
-					} else {
-						cur_conn.browser = BROWSER.OTHER;
-					}
-				}
-			}
-
-			// There is NOTHING that I serve that ever checks modification time. We always change file names...
-			if(str_cmp(&req_header[k], "If-Modified-Since: ")) {
-				debug noticeln("found if modified...!!!!");
-				prt_conn("HTTP/1.1 304 Not Modified\r\n");
-				return -1;
-			}
-			
-			if(str_cmp(&req_header[k], "Accept-Encoding: ")) {
-				j = k + "Accept-Encoding: ".length;
-				if(find(req_header[j .. endl], "gzip") != -1) {
-					cur_conn.gzip = true;
-				} else {
-					cur_conn.gzip = false;
-				}
-			}
-			
-			if(keepalive && str_cmp(&req_header[k], "Connection: ")) {
-				j = k + "Connection: ".length;
-				if(cur_conn.keepalive == false && str_cmp(&req_header[j], "keep-alive")) {
-					cur_conn.keepalive = true;
-				} else if(str_cmp(&req_header[j], "close")) {
-					cur_conn.keepalive = false;
-				}
-			}
-			
-			if(keepalive && str_cmp(&req_header[k], "Keep-Alive: ")) {
-				j = k + "Keep-Alive: ".length;
-				uint keepalive_time = toUint(req_header[j .. endl]);
-				//TODO!! - set the keepalive timeout
-			}
-			
-			if(str_cmp(&req_header[k], "Cookie: ")) {
-				j = k + "Cookie: ".length;
-				debug noticeln("Cookie: ", req_header[j .. endl]);
-				process_cookie(req_header[j .. endl]);
-			}
-			
-			if(req_header[endl+2] == '\r' && req_header[endl+3] == '\n') {
-				if(cur_conn.content_len == -1) {
-					debug errorln("411 Length Required:\n", req_header);
-					prt_conn("HTTP/1.0 411 Length Required\r\n");
-					return -1;
-				}
-				
-				Core.get_session();
-				return cast(int)endl+4;
-			}
-		}
-	}
-	
-	return 0;
-}
-
-int main_loop() {
-	//GC.minimize();
-	
-	ubyte[16] ip_incoming;
-	auto s = socket_tcp4();
-	socket_bind4_reuse(s, settings.bind_ip.ptr, settings.bind_port);
-	
-	// LISTEN
-	auto sock_listen = socket_listen(s, 16);
-	if(sock_listen == -1) {
-		errorln("could not listen");
-		return 111;
-	}
-	
-	//io_nonblock(s);
-	if(!io_fd(s)) {
-		errorln("could not get a file descriptor");
-		return 112;
-	}
-	
-	io_wantread(s);
-	
-	debug {
-		noticeln("accepting connections on ", cast(char)settings.bind_ip[0], ".", cast(char)settings.bind_ip[1], ".", cast(char)settings.bind_ip[2], ".", cast(char)settings.bind_ip[3], ":", cast(int)settings.bind_port, " ...");
-	} else {
-		noticeln("accepting connections...");
-	}
-	
-	// END LISTEN
-	
-	
-	// main loop
-	char[4096] req_data;
-	while(true) {
-		// process tasks
-		ptrdiff_t update_offset = periodic_updates.length-1;
-		if(update_offset >= 0) {
-			do {
-				periodic_updates[update_offset]();
-			} while(update_offset--);
-		}
-		
-		// wait up to one second and loop again to do garbage collection / maintenance
-		io_waituntil2(1000);
-	
-		//GC.disable();
-		bool do_gc = true;
-		double begin_loop = microtime();
-		double now = begin_loop;
-		request_time = cast(int)time(null);
-		
-		// can write
-		int writes = 0;
-		while(++writes <= 50 && (cur_sock = cast(uint)io_canwrite()) != -1) {
-			double begin_write = microtime();
-			
-			do_gc = false;
-			dyn_connection* conn = cast(dyn_connection*)io_getcookie(cur_sock);
-			
-			if(conn) {
-				if(cur_conn.cur_stage == 2) {
-					cur_conn.cur_stage = 3;
-					conn.begin_writing = microtime();
-					dyn_connection.reading--;
-					dyn_connection.writing++;
-				}
-				
-				assert(conn.socket == cur_sock);
-				ulong how_much = conn.output_len - conn.cur_ptr;
-				ulong ideal = how_much;
-				if(ideal > 8000) {
-					ideal = 8000;
-				} else if(ideal < 4000 && ideal <= how_much) {
-					ideal = 4000;
-				}
-				
-				if(how_much > ideal) {
-					how_much = ideal;
-				}
-				
-				void* output;
-				if(conn.output_file == null) {
-					output = conn.output;
-				} else {
-					output = conn.output_file;
-				}
-				
-				auto l = io_trywritetimeout(cur_sock, cast(char*)output + conn.cur_ptr, how_much);
-				
-				if(l == -3 || l == -2) {
-					conn.end();
-				} else if(l+conn.cur_ptr == conn.output_len) {
-					debug noticeln("connection success ", cur_sock);
-					//conn.output.length = 0;
-					if(conn.keepalive) {
-						//io_dontwantwrite(i);
-						//io_wantread(i);
-						//TODO!! - use keepalive properly
-						conn.end();
-					} else {
-						//io_dontwantwrite(i);
-						conn.end();
-					}
-				} else if(l > 0) {
-					conn.cur_ptr += l;
-				}
-			} else {
-				//io_dontwantwrite(i);
-				io_close(cur_sock);
-			}
-			
-			now = microtime();
-			printf("writing time: %0.2fms\n", (now - begin_write) * 0.001);
-		}
-		
-		int reads = 0;
-		while(++reads <= 5 && (cur_sock = cast(uint)io_canread()) != -1) {
-			do_gc = false;
-			
-			if(cur_sock == s) {
-				double begin_connect = microtime();
-				// new connection. put it in a different socket
-				int n;
-				uint connects = 10 + dyn_connection.reading + dyn_connection.writing - dyn_connection.connected;
-				// && dyn_connection.connected <= dyn_connection.reading + 10
-				while(dyn_connection.used <= MAX_CONNECTIONS && --connects && (n = socket_accept4(s, cast(char*)ip_incoming.ptr, &settings.bind_port)) != -1) {
-					cur_sock = n;
-					io_nonblock(n);
-					if(io_fd(n)) {
-						cur_conn = dyn_connection.connect();
-						cur_conn.begin_connect = begin_connect;
-						dyn_connection.connected++;
-						cur_conn.socket = n;
-						cur_conn.cur_stage = 1;
-						cur_conn.ip[0 .. 4] = cast(ubyte[])ip_incoming[0 .. 4];
-						io_wantread(n);
-						io_setcookie(n, cur_conn);
-					} else {
-						errorln("io failed");
-					}
-				}
-				
-				now = microtime();
-				printf("connecting time: %0.2fms\n", (now - begin_connect) * 0.001);
-			} else {
-				double begin_read = microtime();
-				bool error = false;
-				auto l = io_tryreadtimeout(cur_sock, &req_data[0], 4096);
-				
-				if(l > 0) {
-					cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
-					if(cur_conn.cur_stage == 1) {
-						cur_conn.cur_stage = 2;
-						cur_conn.begin_reading = begin_read;
-						dyn_connection.connected--;
-						dyn_connection.reading++;
-					}
-					
-					cur_conn.input ~= req_data[0 .. l];
-					if(cur_conn.output_file == null && cur_conn.input.length > 4) {
-						cur_conn.header_len = process_header();
-						
-						if(cur_conn.header_len == -1) { // header needs to write immediately..
-							io_wantwrite(cur_conn.socket);
-							break;
-						}
-					}
-					
-					if(cur_conn.header_len > 0) {
-						cur_conn.end_reading = cur_conn.begin_processing = microtime();
-						debug noticeln("doc: '", cur_conn.doc, "' ", cur_conn.socket, " qs: '", cur_conn.orig_qs, "'");
-						
-						char last_char = cur_conn.doc[$-1];
-						string doc = cur_conn.doc[1 .. $];
-						void** file_ptr;
-						
-						if(last_char != '/') {
-							if(cur_conn.gzip) {
-								file_ptr = doc in FILES_GZIP;
-							} else {
-								file_ptr = doc in FILES;
-							}
-						}
-						
-						if(last_char == '/' || (cur_conn.orig_qs.length > 0 && !file_ptr)) {
-							if(cur_conn.content_len && cur_conn.content_len + cur_conn.header_len != cur_conn.input.length) {
-								// this prevents trying to render the page, if there is a POST, and it's not fully downloaded yet
-								debug noticeln("breaking ", cur_conn.content_len + cur_conn.header_len, " ", cur_conn.input.length, "\n\n");
-								continue;
-							}
-							
-							
-							// the reason why all of this goes above, is because process_post will write directly to the global, not the connection structure
-							.uid = cur_conn.uid;
-							.sid = cur_conn.sid.dup;
-							.wid = cur_conn.wid;
-							.POST = cur_conn.POST;
-							.FUNC = cur_conn.FUNC;
-							.COOKIE = cur_conn.COOKIE;
-							.func_name = cur_conn.func_name;
-							.browser_type = cur_conn.browser;
-							.browser_version = cur_conn.browser_version;
-							.ip4 = *cast(uint*)(&cur_conn.ip[0]);
-							debug noticeln("IP: ", ip4);
-							
-							if(cur_conn.content_len) {
-								process_post();
-							}
-							
-							if(cur_conn.doc == "/d/" && wid) {
-								errorln("TODO!! - add the dynamic back");
-								//do_dynamic();
-							} else {
-								Core.do_page_request();
-								io_wantwrite(cur_conn.socket);
-							}
-						} else {
-							
-							
-							if(file_ptr) {
-								cur_conn.output_file = ((cast(char*)(*file_ptr)) +4);
-								cur_conn.output_len = *cast(uint*)(*file_ptr);
-							} else {
-								
-								//TODO!! - change this to AIO in the C library, cuse this is slow.
-								//OPTIMIZE!! - perhaps I can remember the biggest size file, then serve that size, instead of duplicating the thumbs
-								//OPTIMIZE!! - I have found that 1 in about 7 files really benefits from gzip encoding... if it does benefit, then I can
-								if(doc.length > 2 && doc[0] == 'j' && doc[1] == '/') {
-									string photo = doc[2 .. $];
-									//TODO!!!! temporary, so my computer doesn't suck... delete me!
-									if(find(photo, '/') != -1) {
-										goto error;
-									}
-									// j/[size][hash]
-									
-									int exists;
-									string real_file;
-									int photo_type;
-									if(photo.length > 7) {
-										real_file = get_real_filename(photo);
-										photo_type = get_photo_type(photo);
-										//exists = std.file.exists(real_file);
-										exists = Path.exists(real_file);
-										if(!exists && doc.length > 9) {
-											exists = process_photo(photo);
-										}
-									} else if(photo[0] == 'n' && photo[1] == 'f') {
-										real_file = "/j/" ~ photo;
-										photo_type = PHOTO_INFO.JPG;
-										exists = Path.exists(real_file);
-										if(!exists) {
-											exists = process_nf(photo);
-										}
-									}
-									
-									if(exists) {
-										string data = cast(char[])File.get(real_file);
-										string type;
-										type.length = 20;
-										switch(photo_type) {
-										case PHOTO_INFO.JPG:
-											type = "image/jpeg";
-											break;
-										
-										case PHOTO_INFO.GIF:
-											type = "image/gif";
-											break;
-										
-										case PHOTO_INFO.PNG:
-											type = "image/png";
-											break;
-										
-										default:
-											goto error;
-										}
-										
-										int file_len = cast(int)data.length;
-										data = "\x1f\x8b\x08\x00\x00\x00\x00\x00" ~ cast(char[])Core.compress(data, 9);
-										debug printf("compressed from %d to %d (%0.1f%% of orig size)\n", file_len, data.length, (cast(float)data.length / file_len)*100);
-										prt_conn("HTTP/1.1 200 OK"
-										"\r\nContent-Encoding: gzip"
-										"\r\nExpires: Wed, 28 Dec 2011 11:11:00 GMT"
-										"\r\nContent-Type: " ~ type ~
-										//"\r\nLast-Modified: Fri, 26 Oct 1985 11:11:00 GMT"
-										"\r\nContent-Length: " ~ Integer.toString(file_len) ~
-										"\r\n\r\n" ~ data);
-									}
-								} else {
-									prt_conn("HTTP/1.1 404 OK"
-										"\r\nContent-Type: text/html"
-										"\r\n\r\n"
-										"<h2>not found</h2>");
-								}
-							}
-							
-							io_wantwrite(cur_conn.socket);
-						}
-						
-						//TODO!! save session here, so I can track how many files were downloaded for each user as well...
-						//that would help me to see if someone is scripting the site or not, because someone who is not downloading a single file in a short period of time = a script
-						
-						cur_conn.end_processing = microtime();
-					}
-				} else if(l == -3 || l == -2) {
-					goto error;
-				}
-				
-				
-				
-				
-				if(error) {
-error:				cur_conn = cast(dyn_connection*)io_getcookie(cur_sock);
-					//io_close(cur_sock);
-					errorln("closed with error");
-					if(cur_conn) {
-						cur_conn.end();
-					}
-				}
-				
-				now = microtime();
-				printf("reading/processing time: %0.2fms\n", (now - begin_read) * 0.001);
-			}
-		}
-		
-		// CONNECTION IS CLOSED, NOW CLEAN UP:
-		//GC.enable();
-		
-		// reset globals
-		PANELS = null;
-		Core.js_out = null;
-		func_name = null;
-		title = null;
-		func_ret = 0;
-		zid = is_me = 0;
-		
-		stats.since_gc++;
-		
-		// next, if the timestamp is different, then I know to start garbage collecting connections and the memory
-		if(last_request_time != request_time) {
-			last_request_time = request_time;
-			
-			if(dyn_connection.connected - dyn_connection.reading - dyn_connection.writing > 0) {
-				uint d;
-				while((d = io_timeouted()) != -1) {
-					//io_close(d);
-					cur_conn = cast(dyn_connection*)io_getcookie(d);
-					//io_close(cur_sock);
-					errorln("closed with timeout");
-					if(cur_conn) {
-						cur_conn.end();
-					}
-				}
-			}
-			
-			//uint collected = dyn_connection.release_connections(request_time - SECONDS_TO_RECONNECT);
-			//debug noticeln("collected ", collected, " connections..");
-			
-			// output in a big block to the log file...
-			
-			
-		}
-		
-		if(dyn_connection.connected || dyn_connection.reading || dyn_connection.writing) {
-			do_gc = false;
-		}
-		
-		if(do_gc || stats.since_gc > 500) {
-			//if(stats.since_gc > 5) {
-			//noticeln("FULL COLLECT ", stats.since_gc);
-			stats.since_gc = 0;
-			GC.collect();
-			//}
-		}
-		
-		if(!do_gc) {
-			printf(" >> loop time: %0.2fms (%d/%d/%d) connected/reading/writing\n--------------\n", (now - begin_loop) * 0.001, dyn_connection.connected, dyn_connection.reading, dyn_connection.writing);
-		}
-	}
-	
-	io_close(s);
-	return 0;
-}
-
-void serve_dir(string location, string prefix) {
-	if(location[$-1] != '/') {
-		location ~= '/';
-	}
-	
-	if(prefix[$-1] != '/') {
-		prefix ~= '/';
-	}
-	
-	bool serve_dir_helper(FilePath fp) {
-		string file = fp.toString();
-		string f_orig = file;
-		auto off = find(file, '/');
-		while(off != -1) {
-			file = file[++off .. $];
-			off = find(file, '/');
-		}
-		
-		string tmp = f_orig[location.length .. $];
-		string data = cast(string)File.get(f_orig);
-		serve_file(f_orig, prefix ~ tmp[0 .. $-file.length], data, null);
-		return true;
-	}
-	
-	scan_dir(FilePath(location), &serve_dir_helper);
-}
-
-void serve_file(string filename, string prefix, string data, string type) {
-	int file_len = cast(int)data.length;
-	if(file_len == 0) {
-		debug noticeln("file '", filename, "' is empty. ignoring");
-		return;
-	}
-	
-	string file = filename;
-	auto off = find(filename, '/');
-	while(off != -1) {
-		file = filename[++off .. $];
-		off = find(filename, '/', off);
-	}
-	
-	file = prefix ~ file;
-	noticeln("preparing file: ", file);
-	
-	bool is_text = false;
-	string output;
-	if(type.length == 0) {
-		type.length = 20;
-		char[4] ext = filename[$-4 .. $];
-		if(ext[1] == '.') {
-			ext[0] = ' ';
-		}
-		
-		switch(ext) {
-		case ".css":
-			type = "text/css";
-			break;
-			
-		case " .js":
-			type = "text/javascript";
-			break;
-			
-		case "jpeg":
-		case ".jpg":
-			type = "image/jpeg";
-			break;
-		
-		case ".gif":
-			type = "image/gif";
-			break;
-		
-		case ".png":
-			type = "image/png";
-			break;
-		
-		case ".ico":
-			type = "image/x-icon";
-			break;
-		
-		case ".swf":
-			type = "application/x-shockwave-flash";
-			break;
-		
-		case ".pdf":
-			type = "application/pdf";
-			break;
-		
-		case ".mp3":
-			type = "audio/mpeg";
-			break;
-		
-		case ".m3u":
-			type = "audio/x-mpegurl";
-			break;
-		
-		case ".dtd":
-		case ".xml":
-			type = "text/xml";
-			break;
-		
-			
-		default:
-			type = "text/html";
-		}
-	}
-	
-	if(type[0 .. 4] == "text") {
-		is_text = true;
-	}
-	
-	if(settings.optimize_resources) {
-		switch(type) {
-		case "text/css":
-			auto orig_len = data.length;
-			data = css_optimizer(data);
-			printf("obfuscated from %d to %d (%0.1f of orig size)\n", orig_len, data.length, (cast(float)data.length / orig_len)*100);
-			break;
-			
-		case "text/javascript":
-			auto orig_len = data.length;
-			data = js_optimizer(data);
-			printf("obfuscated from %d to %d (%0.1f of orig size)\n", orig_len, data.length, (cast(float)data.length / orig_len)*100);
-			break;
-		}
-	}
-	
-	
-	uint* ptr;
-	string tmp = "HTTP/1.1 200 OK"
-	"\r\nExpires: Wed, 28 Dec 2011 11:11:00 GMT"
-	"\r\nContent-Type: " ~ type ~
-	"\r\nContent-Length: " ~ Integer.toString(file_len) ~
-	"\r\n\r\n" ~ data;
-	
-	ptr = cast(uint*)malloc(tmp.length+4);
-	*ptr = cast(uint)tmp.length;
-	FILES[file] = ptr;
-	memcpy((cast(void*)ptr) + 4, tmp.ptr, tmp.length);
-	
-	//std.gc.hasNoPointers(&FILES);
-	
-	if(is_text && data.length > 100) {
-		int data_len = cast(int)data.length;
-		data = "\x1f\x8b\x08\x00\x00\x00\x00\x00" ~ cast(char[])Core.compress(trim(data), 9);
-		printf("compressed from %d to %d (%0.1f%% of orig size)\n", data_len, data.length, (cast(float)data.length / file_len)*100);
-		file_len = cast(int)data.length;
-		
-		//FILES_GZIP[file]
-		tmp = "HTTP/1.1 200 OK"
-		"\r\nExpires: Wed, 28 Dec 2011 11:11:00 GMT"
-		"\r\nContent-Encoding: gzip"
-		"\r\nContent-Type: " ~ type ~
-		"\r\nContent-Length: " ~ Integer.toString(file_len) ~
-		"\r\n\r\n" ~ data;
-		
-		ptr = cast(uint*)malloc(tmp.length+4);
-		*ptr = cast(uint)tmp.length;
-		memcpy((cast(void*)ptr) + 4, tmp.ptr, tmp.length);
-	}
-	
-	FILES_GZIP[file] = ptr;
-	
-	//std.gc.hasNoPointers(&FILES_GZIP);
-}
-
-void parse_config(string config_file) {
-	debug noticeln("-- parsing config");
-	string* val;
-	config_file = cast(string)File.get(config_file);
-	config_file = replace(config_file, '\n', ',');
-	config_file = clean_text(config_file);
-	string[string] c_config;
-	
-	c_config.parse_options(config_file);
-	
-	
-	/*
-	val = "edb.host" in c_config;
-	assert(val, "You need to add the parameter 'edb.host' to your config");
-	if(val) {
-		settings.edb_host = *val;
-	}
-	
-	val = "edb.port" in c_config;
-	if(val) {
-		settings.edb_port = toUint(*val);
-	}
-	
-	val = "edb.namespace" in c_config;
-	if(val) {
-		settings.edb_ns = *val;
-	}
-	*/
-	
-	val = "root_dir" in c_config;
-	if(val) {
-		debug {
-			if(!Path.exists(*val)) {
-				throw new Exception("root directory (" ~ *val ~ ") does not exist");
-			}
-		}
-		
-		settings.root_dir = *val;
-	}
-	
-	val = "lang_dir" in c_config;
-	assert(val, "You need to add the parameter 'lang_dir' to your config");
-	if(val) {
-		settings.lang_dir = *val;
-	}
-	
-	val = "panels_dir" in c_config;
-	assert(val, "You need to add the parameter 'panels_dir' to your config");
-	if(val) {
-		settings.panels_dir = *val;
-	}
-	
-	val = "resources" in c_config;
-	assert(val, "You need to add the parameter 'resources' to your config");
-	if(val) {
-		settings.resources_dir = *val;
-	}
-	
-	val = "files" in c_config;
-	assert(val, "You need to add the parameter files in your config");
-	if(val) {
-		settings.static_files = *val;
-	}
-	
-	val = "ouput_buffer_size" in c_config;
-	if(val) {
-		settings.output_buffer_size = toUint(*val);
-	} else {
-		settings.output_buffer_size = (1024*512)-1;
-	}
-	
-	val = "site_url" in c_config;
-	assert(val, "You need to add the parameter 'site_url' to your config");
-	if(val) {
-		settings.site_url = *val;
-	}
-	
-	val = "bind_port" in c_config;
-	assert(val, "You need to add the parameter 'bind_port' to your config");
-	if(val) {
-		settings.site_port = *val;
-		settings.bind_port = toUint(*val);
-	}
-	
-	val = "bind_ip" in c_config;
-	assert(val, "You need to add the parameter 'bind_ip' to your config");
-	if(val) {
-		string site_ip = *val;
-		assert(site_ip.length >= 7 && site_ip.length <= 16, "you have an incorrectly formed 'bind_ip' in your config");
-		//4.2.2.1
-		int i;
-		int last = 0;
-		int offset = 0;
-		do {
-			if(site_ip[i] == '.') {
-				settings.bind_ip[offset++] = cast(ubyte)toUint(site_ip[last .. i]);
-				last = i+1;
-			}
-		} while(++i < site_ip.length);
-		
-		assert(offset == 3);
-		settings.bind_ip[3] = cast(ubyte)toUint(site_ip[last .. $]);
-	}
-	
-	val = "optimize_resources" in c_config;
-	if(val) {
-		settings.optimize_resources = cast(bool)toUint(*val);
-	}
-	
-	val = "reload_panels" in c_config;
-	if(val) {
-		settings.reload_panels = cast(bool)toUint(*val);
-	}
-	
-	val = "reload_resources" in c_config;
-	if(val) {
-		settings.reload_resources = cast(bool)toUint(*val);
-	}
-	
-	val = "preserve_newlines" in c_config;
-	if(val) {
-		settings.preserve_newlines = cast(bool)toUint(*val);
-	}
-	
-	debug {
-		noticeln("optimize_resources: ", settings.optimize_resources);
-		noticeln("reload_resources: ", settings.reload_resources);
-		noticeln("reload_panels: ", settings.reload_panels);
-		noticeln("preserve_newlines: ", settings.preserve_newlines);
-	}
+	exit(0);
 }
 
 int main(string[] args) {
@@ -2377,7 +2390,7 @@ int main(string[] args) {
 	}
 	
 	assert(config_file != "config", "right now, I do not yet have the ability to make virtual hosts, and I do not yet have the control panel built, so specify the config file on the command like like this -config config.hellacoders");
-	parse_config(config_file);
+	Core.parse_config(config_file);
 	
 	if(settings.root_dir.length) {
 		Environment.cwd(settings.root_dir);
@@ -2456,33 +2469,16 @@ int main(string[] args) {
 	}
 	
 	// LATER, make this dynamically generated by a template
-	load_files();
+	Core.load_files();
 	
 	
 	// listen and serve files
 	//GC.collect();
 	//GC.minimize();
 	
-	int ret = main_loop();
+	int ret = Core.main_loop();
 	
 	return ret;
-}
-
-void load_files() {
-	if(settings.static_files.length) {
-		
-		string[string] files;
-		files.parse_options(settings.static_files);
-		foreach(real_name, file_loc; files) {
-			FilePath fp = new FilePath(file_loc);
-			if(fp.isFolder()) {
-				serve_dir(file_loc, real_name);
-			} else {
-				string data = cast(string)File.get(file_loc);
-				serve_file(file_loc, "", data, null);
-			}
-		}
-	}
 }
 
 // I am quickly growing tired of this bus driver. She insists on calling out EVERY street we pass in an "outdoor" voice
