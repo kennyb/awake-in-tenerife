@@ -11,13 +11,13 @@ class TemplateJS : TemplateInterface {
 		BEFORE_UNLOAD
 	}
 	
-	private static typeof(this)[string] instances;
+	static private typeof(this)[string] instances;
 	static this() {
 		PNL.registerTemplate("js", &this.create);
 		PNL.registerTemplate("endjs", &this.create);
 	}
 
-	private static void create(inout PNL pnl, string cmd, string inside) {
+	static private void create(inout PNL pnl, string cmd, string inside) {
 		if(!(pnl.name in instances)) {
 			instances[pnl.name] = new typeof(this)(pnl, inside);
 		}
@@ -65,8 +65,8 @@ class TemplateJS : TemplateInterface {
 	private string panel;
 	private string js_after;
 	
-	private static size_t begin_ptr;
-	private static size_t save_ptr;
+	static private size_t begin_ptr;
+	static private size_t save_ptr;
 	
 	this(inout PNL pnl, string params) {
 		this.panel = pnl.name; 
@@ -130,7 +130,7 @@ class TemplateRender : TemplateInterface {
 		PNL.registerTemplate("render", &this.create);
 	}
 	
-	private static void create(inout PNL pnl, string cmd, string inside) {
+	static private void create(inout PNL pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
@@ -166,7 +166,7 @@ class TemplateImg : TemplateInterface {
 		PNL.registerTemplate("img", &this.create);
 	}
 	
-	private static void create(inout PNL pnl, string cmd, string inside) {
+	static private void create(inout PNL pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;
@@ -249,7 +249,7 @@ class TemplateYouTube : TemplateInterface {
 		PNL.registerTemplate("youtube", &this.create);
 	}
 	
-	private static void create(inout PNL pnl, string cmd, string inside) {
+	static private void create(inout PNL pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;

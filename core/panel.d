@@ -230,40 +230,40 @@ final class PNL {
 	import Float = tango.text.convert.Float;
 	import tango.core.Memory : GC;
 	
-	private static PNL[string] pnl;
-	private static PNL[string] func_ret_pnl;
-	private static string s_pnl_auth;
-	private static PNL* pnl_auth;
+	static private PNL[string] pnl;
+	static private PNL[string] func_ret_pnl;
+	static private string s_pnl_auth;
+	static private PNL* pnl_auth;
 	version(unittests) {
-		private static bool[string] public_pnl;
+		static private bool[string] public_pnl;
 	} else {
-		version(notrelease) private static bool[string] public_pnl;
+		version(notrelease) static private bool[string] public_pnl;
 	}
 	
 	static string[128] str_const_vars;
 	static string[128] str_local_vars;
 	static string[16] str_global_vars;
 	
-	private static PNLByte[] PB;
-	private static TemplateFrame[] PANELS;
-	private static TemplateFrame*[] panels;
-	private static string[string][string] lang;
-	private static string[] idiomas;
-	private static string default_idioma = "en";
-	private static void function(inout PNL pnl, string cmd, string inside)[string] templates;
-	private static int function()[string] public_funcs;
-	private static int function()[string] funcs;
-	private static string[][string] func_args;
-	private static uint[string] global_var_type;
-	private static char*[string] global_var_ptr;
-	private static string*[string] global_var_str;
+	static private PNLByte[] PB;
+	static private TemplateFrame[] PANELS;
+	static private TemplateFrame*[] panels;
+	static private string[string][string] lang;
+	static private string[] idiomas;
+	static private string default_idioma = "en";
+	static private void function(inout PNL pnl, string cmd, string inside)[string] templates;
+	static private int function()[string] public_funcs;
+	static private int function()[string] funcs;
+	static private string[][string] func_args;
+	static private uint[string] global_var_type;
+	static private char*[string] global_var_ptr;
+	static private string*[string] global_var_str;
 	
-	private static final_replace[] final_replacements;
-	private static bool preserve_newlines;
-	private static bool preparse;
-	private static string[string] inline_panels;
+	static private final_replace[] final_replacements;
+	static private bool preserve_newlines;
+	static private bool preparse;
+	static private string[string] inline_panels;
 	
-	private static reload_resources = false;
+	static private bool reload_resources = false;
 	
 	version(unittests) {
 		static void reset_state() {
@@ -380,7 +380,7 @@ final class PNL {
 		debug noticeln("-- Finished Loading Panels --");
 	}
 	
-	private static void parse_idioma(string filename) {
+	static private void parse_idioma(string filename) {
 		auto content = cast(string)File.get(filename);
 		if(content.length && filename[$-4 .. $] == ".txt") {
 			auto bar_pos = find_r(filename, '/'); // cheap hack, because find_r will return -1 if it's not found
@@ -396,7 +396,7 @@ final class PNL {
 		}
 	}
 	
-	private static void parse_file(string filename, bool preparse) {
+	static private void parse_file(string filename, bool preparse) {
 		auto text = cast(string)File.get(filename);
 		if(text.length) {
 			parse_text(text, preparse);
@@ -940,10 +940,10 @@ final class PNL {
 	private int[string] obj_func_inst;
 	private int[string] var_inst;
 	
-	private static int[] lines;
+	static private int[] lines;
 	
 	private uint scopee = 0;
-	private static bool first_text;
+	static private bool first_text;
 	
 	this(string text, string name) {
 		this.text = text.dup;

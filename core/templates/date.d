@@ -27,12 +27,12 @@ class TemplateDate {
 	import tango.stdc.time;
 	import Integer = tango.text.convert.Integer;
 	
-	private static typeof(this)[] instances;
+	static private typeof(this)[] instances;
 	static this() {
 		PNL.registerTemplate("date", &create);
 	}
 	
-	private static void create(inout PNL pnl, string cmd, string inside) {
+	static private void create(inout PNL pnl, string cmd, string inside) {
 		instances ~= new typeof(this)(pnl, inside);
 		PNLByte* p = pnl.newByte();
 		p.action = pnl_action_template;

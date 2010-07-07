@@ -123,8 +123,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	static const string obj_name_quoted = "\"` ~ name ~ `\"";
 	
 	// static shit
-	private static MongoCollection collection;
-	private static Data[long] cache;
+	static private MongoCollection collection;
+	static private Data[long] cache;
 	
 	static this() {
 		edb_inits["`~name~`"] = &edb_init;
@@ -138,7 +138,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		private long* ptr_id;
 		private char*[] dyn_vars;
 		
-		private static TemplateObject factory(inout PNL pnl, inout string[string] params) {
+		static private TemplateObject factory(inout PNL pnl, inout string[string] params) {
 			// factory method to produce these objects :)
 			typeof(this) obj = new typeof(this)(pnl, params);
 			//static assert(obj.register, "you must add the method to class `~ name ~ ` :: void register(inout PNL pnl, string[string] params)");
@@ -248,15 +248,34 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				}
 				
 				if(id) {
-					load(id);
+					load_id(id);
 				} else {
 					load(saved_query, page_offset, page_size);
 				}
 			}
+			
+			protected int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 1) {
+				this.page_size = page_size;
+				this.page_offset = page_offset;
+				current = -1;
+				column = -1;
+				unreadable_results = 0;
+				
+				bson b;
+				make_query_local(b, parsed_query);
+				
+				mongo_cursor_destroy(cursor);
+				cursor = _query(&b, this.page_offset, this.page_size);
+				loop();
+				skip_loop = cursor != null ? true : false;
+				bson_destroy(&b);
+				
+				return cursor != null;
+			}
 		` : ``) ~ `
 	` : ``) ~ `
 	
-	private static void edb_init() {
+	static private void edb_init() {
 		collection = new MongoCollection(edb_connection, "` ~ name ~ `");
 		noticeln("intializing edb::", collection.ns);
 		
@@ -330,19 +349,19 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	static mongo_cursor* _query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
+	static private mongo_cursor* _query(bson* bson_query, int page_offset, int page_size, bool cmd = false) {
 		return collection.query(bson_query, page_offset * page_size, page_size, cmd);
 	}
 	
-	static long _count(bson* bson_query) {
+	static private long _count(bson* bson_query) {
 		return collection.count(bson_query);
 	}
 	
-	static long total() {
+	static private long total() {
 		return collection.total();
 	}
 	
-	static bool exists(long id) {
+	static public bool exists(long id) {
 		bson b;
 		string[string] q;
 		q["$count"] = obj_name_quoted;
@@ -354,7 +373,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return r > 0;
 	}
 	
-	static long count(string str_query) {
+	static public long count(string str_query) {
 		if(str_query.length && str_query != "{}") {
 			bson b;
 			string[string] q;
@@ -370,13 +389,13 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	private static void make_query(inout bson b, string str_query) {
+	static private void make_query(inout bson b, string str_query) {
 		string[string] query;
 		query.parse_options(str_query, false);
 		make_query(b, query);
 	}
 	
-	private static void make_query(inout bson b, inout string[string] parsed_query) {
+	static private void make_query(inout bson b, inout string[string] parsed_query) {
 		BSON bs;
 		
 		string opt_orderby;
@@ -600,7 +619,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		if(id != 0) {
 			this._id = id;
 			
-			if(!load(id)) {
+			if(!load_id(id)) {
 				this._id = -id;
 			}
 		}
@@ -615,7 +634,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		}
 	}
 	
-	long load(long id) {
+	private long load_id(long id) {
 		bson b;
 		BSON bs;
 		bs.append("_id", id);
@@ -631,25 +650,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		mongo_cursor_destroy(cursor);
 		cursor = null;
 		return this._id;
-	}
-	
-	private int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 1) {
-		this.page_size = page_size;
-		this.page_offset = page_offset;
-		current = -1;
-		column = -1;
-		unreadable_results = 0;
-		
-		bson b;
-		make_query_local(b, parsed_query);
-		
-		mongo_cursor_destroy(cursor);
-		cursor = _query(&b, this.page_offset, this.page_size);
-		loop();
-		skip_loop = cursor != null ? true : false;
-		bson_destroy(&b);
-		
-		return cursor != null;
 	}
 	
 	protected int loop() {
@@ -798,7 +798,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return true;
 	}
 	
-	long save() {
+	public long save() {
 		bson b;
 		
 		if(verify_writable()) {
@@ -925,7 +925,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		return _id;
 	}
 	
-	int destroy() {
+	public int destroy() {
 		//TODO!!!! - destroy the object
 		bson b;
 		BSON bs;
@@ -1132,7 +1132,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		//bson_print(&b);
 	}
 	
-	void make_bson_struct(inout bson b) {
+	private void make_bson_struct(inout bson b) {
 		BSON bs;
 		
 		foreach(j, caca; data.tupleof) {

@@ -121,7 +121,7 @@ class Session : EdbObject {
 		PNL.exportFunctionArg("tz", "tz");
 	}
 	
-	private static string get_rand_sid() {
+	static private string get_rand_sid() {
 		char[26] output = '0';
 		string tmp;
 		

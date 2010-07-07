@@ -39,7 +39,7 @@ unittest {
 
 class HttpRequest {
 	
-	private static ubyte[4] ip[string][];
+	static private ubyte[4] ip[string][];
 	private string req_header;
 	private string host;
 	private ubyte[4][] ips;
