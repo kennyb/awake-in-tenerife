@@ -158,30 +158,31 @@ class Url : TemplateObject {
 		if(strings.length) {
 			foreach(string str, inout string* val; strings) {
 				string* ptr_str = str in POST;
+				
+				*val = null;
 				if(ptr_str) {
 					*val = *ptr_str;
-					isset[str] = 1;
 				}
+				
+				isset[str] = ptr_str ? 1 : 0;
 			}
 		}
 		
 		if(ints.length) {
 			foreach(string str, inout long val; ints) {
 				string* ptr_str = str in POST;
-				if(ptr_str) {
-					val = toLong(*ptr_str);
-					isset[str] = 1;
-				}
+				
+				val = ptr_str ? toLong(*ptr_str) : 0;
+				isset[str] = ptr_str ? 1 : 0;
 			}
 		}
 		
 		if(uints.length) {
 			foreach(string str, inout ulong val; uints) {
 				string* ptr_str = str in POST;
-				if(ptr_str) {
-					val = toUlong(*ptr_str);
-					isset[str] = 1;
-				}
+				
+				val = ptr_str ? toUlong(*ptr_str) : 0;
+				isset[str] = ptr_str ? 1 : 0;
 			}
 		}
 	}
