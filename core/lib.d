@@ -432,6 +432,42 @@ void parse_options(inout string[string] options, string text, bool string_quotes
 	}
 }
 
+int get_int(inout string[string] arr, string var) {
+	auto p_var = var in arr;
+	if(p_var) {
+		return toInt(*p_var);
+	}
+	
+	throw new Exception("variable '"~var~"' could not be found");
+}
+
+long get_long(inout string[string] arr, string var) {
+	auto p_var = var in arr;
+	if(p_var) {
+		return toLong(*p_var);
+	}
+	
+	throw new Exception("variable '"~var~"' could not be found");
+}
+
+double get_float(inout string[string] arr, string var) {
+	auto p_var = var in arr;
+	if(p_var) {
+		return toFloat(*p_var);
+	}
+	
+	throw new Exception("variable '"~var~"' could not be found");
+}
+
+string get_str(inout string[string] arr, string var) {
+	auto p_var = var in arr;
+	if(p_var) {
+		return *p_var;
+	}
+	
+	throw new Exception("variable '"~var~"' could not be found");
+}
+
 string make_json(string[string] options) {
 	string str;
 	foreach(l, v; options) {
