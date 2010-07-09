@@ -68,6 +68,10 @@ class EdbObject {
 		return SUCCESS;
 	}
 	
+	protected int verify_destroyable() {
+		return SUCCESS;
+	}
+	
 	protected int find_id() {
 		// for now, this is done by random, but later, order this based on the server array
 		while(true) {
@@ -924,7 +928,10 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	
 	public int destroy() {
-		//TODO!!!! - destroy the object
+		if(verify_destroyable()) {
+			return FAILURE;
+		}
+		
 		bson b;
 		BSON bs;
 		bs.append("_id", _id);
