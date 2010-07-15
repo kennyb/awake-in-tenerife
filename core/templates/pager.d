@@ -55,7 +55,7 @@ class TemplatePager : TemplateInterface {
 		if(val) {
 			s_last_page = *val;
 		} else {
-			debug stdoutln("You must define last_page for template 'pager'");
+			pnl.inlineError("You must define last_page for template 'pager'");
 			s_last_page = "1";
 		}
 		

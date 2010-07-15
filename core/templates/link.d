@@ -200,7 +200,7 @@ class TemplateLink {
 						fargs = PNL.func_args[func];
 					}
 				} else if(func.length) {
-					debug stdoutln("you are calling function: '", func, "' which doesn't exist, or is not registered");
+					pnl.inlineError("you are calling function: '"~ func ~ "' which doesn't exist, or is not registered");
 				}
 			}
 			
@@ -235,7 +235,7 @@ class TemplateLink {
 						
 						func_var_loc ~= func_href.length;
 					} else {
-						debug stdoutln("variable '", var, "' is not registered");
+						pnl.inlineError("variable '" ~ var ~ "' is not registered");
 					}
 				} else {
 					if(func_arg_count++) {
@@ -247,9 +247,9 @@ class TemplateLink {
 			}
 			
 			if(found_func && fargs.length != 0) {
-				debug stdoutln("you are calling function '", func, "' with the following arguments which are not present:");
+				pnl.inlineError("you are calling function '" ~ func ~ "' with the following arguments which are not present:");
 				for(uint i = 0; i < fargs.length; i++) {
-					debug stdoutln("+---> '", fargs[i], '\'');
+					pnl.inlineError("+---> '" ~ fargs[i] ~ '\'');
 				}
 			}
 			
@@ -303,11 +303,11 @@ class TemplateLink {
 			bool multipart = ("multipart" in link_opts ? true : false);
 			
 			if(func.length && func[0] == '$') {
-				debug stdoutln("Link construct cannot yet parse variables as input to 'function:'");
+				pnl.inlineError("Link construct cannot yet parse variables as input to 'function:'");
 			}
 			
 			if(custom_class.length && custom_class[0] == '$') {
-				debug stdoutln("Link construct cannot yet parse variables as input to 'class:'");
+				pnl.inlineError("Link construct cannot yet parse variables as input to 'class:'");
 			}
 			
 			bool no_z = false;
