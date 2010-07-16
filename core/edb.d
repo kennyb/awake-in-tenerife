@@ -294,7 +294,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					make_query_local(b, parsed_query);
 					cursor = _query(&b, this.page_offset, this.page_size);
 					loop();
-					skip_loop = cursor != null && this.page_size > 1 ? true : false;
+					skip_loop = cursor != null && this.num_results > 1 ? true : false;
 					//skip_loop = false;
 					noticeln("skip_loop: ", skip_loop);
 					bson_print(&b);
