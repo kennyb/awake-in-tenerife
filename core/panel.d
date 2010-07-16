@@ -1870,7 +1870,7 @@ final class PNL {
 						}
 						
 						string[string] options;
-						string[string] params = null;
+						string[string] params;
 						if(is_params == true) {
 							params.parse_options(inside[ii .. $]);
 							inside = trim(inside[0 .. ii]);
