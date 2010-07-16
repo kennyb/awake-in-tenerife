@@ -31,8 +31,9 @@ interface TemplateInterface {
 }
 
 interface TemplateObject {
-	void register(inout PNL pnl, inout string[string] params);
-	void load();
+	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params);
+	protected void load();
+	protected void unload();
 }
 
 // in order to account for expressions, (which may or may not be done any time soon (unless I have a really good reason for having them)
@@ -324,8 +325,6 @@ final class PNL {
 	static protected void reload_panels(string panels_dir, string lang_dir) {
 		pnl = null;
 		PB = null;
-		static_objects = null;
-		static_object_loaded = null;
 		GC.collect();
 		//title.length = 50;
 		//title.length = 0;
@@ -1131,7 +1130,7 @@ final class PNL {
 	}
 	
 	alias registerObj registerIndex;
-	static void registerObj(string name, TemplateObject function(inout PNL pnl, inout string[string] params) factory) {
+	static void registerObj(string name, TemplateObject function(inout PNL pnl, string cmd, inout string[string] params) factory) {
 		available_objects[name] = factory;
 	}
 	
@@ -1384,11 +1383,16 @@ final class PNL {
 		pb_count--;
 	}
 	
-	void inlineError(string error) {
+	public void inlineError(string error) {
 		//TODO!!! - add line numbers
 		PNLByte* p = newByte();
 		p.action = pnl_action_var_literal_str;
 		p.ptr_str = getConst("<error>" ~ error ~ "</error>");
+	}
+	
+	public void printError(string error) {
+		//TODO!!! - add line numbers
+		prt("<error>" ~ error ~ "</error>");
 	}
 	
 	private uint parse_indent(uint start_char) {
@@ -1872,14 +1876,14 @@ final class PNL {
 							inside = trim(inside[0 .. ii]);
 						}
 						
-						void delegate() ee = new_object(this, inside, params);
+						void delegate() ee = new_object(this, cmd, inside, params);
 						if(ee) {
 							PNLByte* p = newByte();
 							p.action = pnl_action_void_delegate;
 							p.dg = ee;
 						}
 						
-						if(ee || !(name in static_object_loaded)) {
+						if(ee) {
 							if(cmd == "loop") {
 								start_new_scope = false;
 								if(inside.length) {

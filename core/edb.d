@@ -89,7 +89,6 @@ class EdbObject {
 		
 		return 0;
 	}
-	
 }
 
 void function()[string] edb_inits;
@@ -133,7 +132,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	static this() {
 		edb_inits["`~name~`"] = &edb_init;
 		` ~ (export_template ? `
-			PNL.registerObj(obj_name, &typeof(this).factory);
+			PNL.registerObj(obj_name, &typeof(this).create);
 		` : ``) ~ `
 	}
 	
@@ -142,9 +141,9 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		private long* ptr_id;
 		private char*[] dyn_vars;
 		
-		static private TemplateObject factory(inout PNL pnl, inout string[string] params) {
+		protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
 			// factory method to produce these objects :)
-			typeof(this) obj = new typeof(this)(pnl, params);
+			typeof(this) obj = new typeof(this)(pnl, cmd, params);
 			//static assert(obj.register, "you must add the method to class `~ name ~ ` :: void register(inout PNL pnl, string[string] params)");
 			obj.register(pnl, params);
 			
@@ -183,7 +182,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			
 			pnl.registerUint("` ~ name ~ `.current", &obj.current);
 			pnl.registerUint("` ~ name ~ `.column", &obj.column);
-			pnl.registerUint("` ~ name ~ `.count", &obj.num_results);
+			pnl.registerUint("` ~ name ~ `.num_results", &obj.num_results);
 			pnl.registerUint("` ~ name ~ `.offset", &obj.result_offset);
 			pnl.registerFunction("` ~ name ~ `.count", &count);
 			pnl.registerFunction("` ~ name ~ `.total", &count);
@@ -192,13 +191,14 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			return cast(TemplateObject)obj;
 		}
 		
-		this(inout PNL pnl, inout string[string] params) {
+		this(inout PNL pnl, string cmd, inout string[string] params) {
 			string[string] parsed_params;
 			string* ptr_value;
 			string value;
 			
 			ptr_value = "_id" in params;
 			if(ptr_value && params.length == 1) {
+				this.page_size = 1;
 				// direct id load
 				value = *ptr_value;
 				if(value[0] == '$') {
@@ -214,22 +214,33 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					_id = toLong(value);
 				}
 			} else {
+				if(cmd == "load") {
+					page_size = 1;
+				}
+				
 				parse_query(pnl, params);
 				saved_query = params;
 			}
 		}
 		
 		private void parse_query(inout PNL pnl, inout string[string] params) {
+			bool set_page_size = false;
+			
 			foreach(field, inout v; params) {
+				if(field == "$page_size" || field == "$limit") {
+					set_page_size = true;
+				}
+				
 				if(v[0] == '$') {
 					string var = v[1 .. $];
 					int v_scope = pnl.find_var(var);
 					if(v_scope >= 0) {
 						auto type = pnl.var_type[v_scope][var];
 						v = '$'  ~ Integer.toString(type) ~ ':' ~ Integer.toString(cast(int) dyn_vars.length) ~ '$';
+						
+						//TODO!!! - add functions - registerFunction()
 						if(type == pnl_action_var_str) {
 							dyn_vars ~= cast(char*) pnl.var_str[v_scope][var];
-						//TODO!!! - add functions - registerFunction()
 						} else {
 							dyn_vars ~= pnl.var_ptr[v_scope][var];
 						}
@@ -241,6 +252,10 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					parse_query(pnl, nested);
 					v = make_json(nested);
 				}
+			}
+			
+			if(!set_page_size && !this.page_size) {
+				pnl.inlineError("$page_size not set");
 			}
 		}
 		
@@ -254,25 +269,39 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				if(id) {
 					load_id(id);
 				} else {
+					noticeln("City.id: ", "id" in saved_query ? saved_query["id"] : "null");
 					load(saved_query, page_offset, page_size);
 				}
 			}
+	
+			protected void unload() {
+				mongo_cursor_destroy(cursor);
+				cursor = null;
+			}
 			
-			protected int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 1) {
+			protected int load(inout string[string] parsed_query, int page_offset = 0, int page_size = 0) {
 				this.page_size = page_size;
 				this.page_offset = page_offset;
 				current = -1;
 				column = -1;
 				unreadable_results = 0;
-				
-				bson b;
-				make_query_local(b, parsed_query);
-				
 				mongo_cursor_destroy(cursor);
-				cursor = _query(&b, this.page_offset, this.page_size);
-				loop();
-				skip_loop = cursor != null ? true : false;
-				bson_destroy(&b);
+				cursor = null;
+				
+				if(page_size > 0) {
+					bson b;
+					
+					make_query_local(b, parsed_query);
+					cursor = _query(&b, this.page_offset, this.page_size);
+					loop();
+					skip_loop = cursor != null && this.page_size > 1 ? true : false;
+					//skip_loop = false;
+					noticeln("skip_loop: ", skip_loop);
+					bson_print(&b);
+					bson_destroy(&b);
+				} else {
+					noticeln("ERROR: page size is zero");
+				}
 				
 				return cursor != null;
 			}
@@ -656,14 +685,15 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	protected int loop() {
 		if(skip_loop == true) {
-			//noticeln("L: skip_loop = false");
+			noticeln("L: skip_loop = false");
 			skip_loop = false;
 			// do nothing!
 		} else if(++current != page_size && cursor && mongo_cursor_next(cursor)) {
-			//noticeln("L: next");
+			noticeln("L: next");
 			if(current == 0) {
 				num_results = cursor.mm.reply_header.count;
 				result_offset = cursor.mm.reply_header.offset;
+				noticeln("results: ", num_results, " offset: ", result_offset);
 			}
 			
 			// increment the helper variables
@@ -752,7 +782,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			*/
 			
 		} else {
-			//noticeln("L: done (", current, " ", page_size, " ", cursor != null);
+			noticeln("L: done (", current, " ", page_size, " ", cursor != null);
 			mongo_cursor_destroy(cursor);
 			cursor = null;
 			_id = 0;
@@ -1055,6 +1085,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 										if(scope_offset != -1) {
 											uint type = toUint(val[1 .. scope_offset]);
 											uint dyn_var = toUint(val[++scope_offset .. $-1]);
+											noticeln("type: ", type, " var: ", dyn_var, " len: ", dyn_vars.length);
 											
 											if(dyn_var < dyn_vars.length) {
 												auto ptr_var = dyn_vars[dyn_var];

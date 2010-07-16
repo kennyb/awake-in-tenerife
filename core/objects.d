@@ -17,40 +17,27 @@ The static method of the object can add a reference to itself in the array, and 
 
 */
 
-extern void delegate() new_object(inout PNL pnl, string name, inout string[string] params = null) {
+extern void delegate() new_object(inout PNL pnl, string cmd, string name, inout string[string] params = null) {
 	//errorln("*** Loading Object: ", pnl.name, " :: ", name);
-	
-	// static objects
-	// remember to register static objects with a scope of 0
-	if(name in static_object_loaded) {
-		if((pnl.name in static_object_loaded[name]) == null) {
-			static_objects[name].register(pnl, params);
-			static_object_loaded[name][pnl.name] = true;
-		}
-		
-		return null;
-	}
-	
 	int instance = ((pnl.name in instance_count) && (name in instance_count[pnl.name])) ? ++instance_count[pnl.name][name] : 0;
-	
 	
 	version(unittests) {
 		switch(name) {
 			// test objects
 			case "Url":
-				normal_objects[pnl.name][name][instance] = available_objects["Url"](pnl, params);
-				normal_objects[pnl.name][name][instance].register(pnl, params);
+				normal_objects[pnl.name][name][instance] = available_objects["Url"](pnl, cmd, params);
+				normal_objects[pnl.name][name][instance].register(pnl, cmd, params);
 				return &normal_objects[pnl.name][name][instance].load;
 				
 			case "TestObject":
 				normal_objects[pnl.name][name][instance] = new TestObject;
-				normal_objects[pnl.name][name][instance].register(pnl, params);
+				normal_objects[pnl.name][name][instance].register(pnl, cmd, params);
 				return &normal_objects[pnl.name][name][instance].load;
 				
 			case "TestStaticObject":
 				static_objects[name] = new TestStaticObject;
 				instance_count[pnl.name][name] = instance;
-				static_objects[name].register(pnl, params);
+				static_objects[name].register(pnl, cmd, params);
 				static_object_loaded[name][pnl.name] = true;
 				return &static_objects[name].load;
 			
@@ -59,13 +46,13 @@ extern void delegate() new_object(inout PNL pnl, string name, inout string[strin
 	}
 	
 	//errorln("*** New Object: ", pnl.name, " :: ", name, " ", instance);
-	TemplateObject function(inout PNL pnl, inout string[string] params)* ptr_obj = name in available_objects;
+	TemplateObject function(inout PNL pnl, string cmd, inout string[string] params)* ptr_obj = name in available_objects;
 	
 	if(ptr_obj) {
 		instance_count[pnl.name][name] = instance;
 		
-		TemplateObject function(inout PNL pnl, inout string[string] params) obj_init = *ptr_obj;
-		TemplateObject obj = obj_init(pnl, params);
+		TemplateObject function(inout PNL pnl, string cmd, inout string[string] params) obj_init = *ptr_obj;
+		TemplateObject obj = obj_init(pnl, cmd, params);
 		normal_objects[pnl.name][name][instance] = obj;
 		if(obj) {
 			return &obj.load;
@@ -73,14 +60,14 @@ extern void delegate() new_object(inout PNL pnl, string name, inout string[strin
 	}
 	
 	
-	//debug errorln("Could not find module '", name, "'");
+	pnl.inlineError("Could not find module '"~name~"'");
 	return null;
 }
 
 static this() {
 	// standard objects (that come with every installation)
-	PNL.registerObj("Stats", &R_Stats.factory);
-	PNL.registerObj("Url", &Url.factory);
+	PNL.registerObj("Stats", &R_Stats.create);
+	PNL.registerObj("Url", &Url.create);
 	//TODO!! - fix Array
 	//PNL.registerObj("Array", &Array.factory);
 }
@@ -88,20 +75,26 @@ static this() {
 class Url : TemplateObject {
 	static const string name = "Url";
 	
-	static TemplateObject factory(inout PNL pnl, inout string[string] params) {
-		// factory method to produce these objects ;)
-		typeof(this) obj = new typeof(this)();
+	//OPTIMIZE!!! - merge int/uint long/ulong into one array
+	
+	private string[] keys;
+	private uint[] isset;
+	private uint[] types;
+	private uint[] offsets;
+	
+	private long[] ints;
+	private ulong[] uints;
+	private string*[] strings;
+	
+	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+		noticeln("CREATE");
+		auto obj = new typeof(this)();
 		obj.register(pnl, params);
-		return cast(TemplateObject)obj;
+		return obj;
 	}
 	
-	//OPTIMIZE!!! - merge int/uint long/ulong into one array
-	private uint[string] isset;
-	private long[string] ints;
-	private ulong[string] uints;
-	private string*[string] strings;
-	
-	protected void register(inout PNL pnl, inout string[string] params) {
+	private void register(inout PNL pnl, inout string[string] params) {
+		noticeln("REGISTER");
 		string parent = "";
 		string* ptr_parent = "parent" in params;
 		if(ptr_parent) {
@@ -111,80 +104,69 @@ class Url : TemplateObject {
 		
 		foreach(string key, string value; params) {
 			if(value == "string") {
-				string** ptr_value = key in strings;
-				if(!ptr_value) {
-					strings[key] = pnl.getGlobalString();
-					isset[key] = 0;
-					ptr_value = key in strings;
-				}
+				strings ~= pnl.getGlobalString();
+				offsets ~= strings.length-1;
+				isset ~= 0;
+				keys ~= *pnl.getConst(key);
+				types ~= pnl_action_var_str;
 				
-				pnl.registerUint(parent ~ name ~ '.' ~ key ~ ".isset", key in isset);
-				pnl.registerString(parent ~ name ~ '.' ~ key, *ptr_value);
+				pnl.registerUint(parent ~ name ~ '.' ~ key ~ ".isset", &isset[$-1]);
+				pnl.registerString(parent ~ name ~ '.' ~ key, strings[$-1]);
 			} else if(value == "uint" || value == "ulong") {
-				ulong* ptr_value = key in uints;
-				if(!ptr_value) {
-					uints[key] = 0;
-					isset[key] = 0;
-					ptr_value = key in uints;
-				}
+				uints ~= 0;
+				offsets ~= uints.length-1;
+				isset ~= 0;
+				keys ~= *pnl.getConst(key);
+				types ~= pnl_action_var_uint;
 				
-				pnl.registerUint(parent ~ name ~ '.' ~ key ~ ".isset", key in isset);
+				pnl.registerUint(parent ~ name ~ '.' ~ key ~ ".isset", &isset[$-1]);
 				if(value == "uint") {
-					pnl.registerUint(parent ~ name ~ '.' ~ key, cast(uint*) ptr_value);
+					pnl.registerUint(parent ~ name ~ '.' ~ key, cast(uint*) &uints[$-1]);
 				} else {
-					pnl.registerUlong(parent ~ name ~ '.' ~ key, ptr_value);
+					pnl.registerUlong(parent ~ name ~ '.' ~ key, &uints[$-1]);
 				}
 			} else if(value == "int" || value == "long") {
-				long* ptr_value = key in ints;
-				if(!ptr_value) {
-					ints[key] = 0;
-					isset[key] = 0;
-					ptr_value = key in ints;
-				}
+				ints ~= 0;
+				offsets ~= ints.length-1;
+				isset ~= 0;
+				keys ~= *pnl.getConst(key);
+				types ~= pnl_action_var_int;
 				
-				pnl.registerUint(parent ~ name ~ '.' ~ key ~ ".isset", key in isset);
+				pnl.registerUint(parent ~ name ~ '.' ~ key ~ ".isset", &isset[$-1]);
 				if(value == "int") {
-					pnl.registerInt(parent ~ name ~ '.' ~ key, cast(int*) ptr_value);
+					pnl.registerInt(parent ~ name ~ '.' ~ key, cast(int*) &ints[$-1]);
 				} else {
-					pnl.registerLong(parent ~ name ~ '.' ~ key, ptr_value);
+					pnl.registerLong(parent ~ name ~ '.' ~ key, &ints[$-1]);
 				}
 			} else {
-				debug errorln("I do not know what type '", value, "' is for ", key);
+				pnl.inlineError("I do not know what type '" ~ value ~ "' is for " ~ key);
 			}
 		}
 	}
 	
 	protected void load() {
-		if(strings.length) {
-			foreach(string str, inout string* val; strings) {
-				string* ptr_str = str in POST;
-				
-				*val = null;
-				if(ptr_str) {
-					*val = *ptr_str;
-				}
-				
-				isset[str] = ptr_str ? 1 : 0;
-			}
-		}
+		noticeln("LOAD ", strings.length, " ", ints.length, " ", uints.length);
 		
-		if(ints.length) {
-			foreach(string str, inout long val; ints) {
-				string* ptr_str = str in POST;
-				
-				val = ptr_str ? toLong(*ptr_str) : 0;
-				isset[str] = ptr_str ? 1 : 0;
+		foreach(i, key; keys) {
+			auto ptr_val = key in POST;
+			auto type = types[i];
+			auto offset = offsets[i];
+			noticeln("******* string ", key, " = ", ptr_val ? *ptr_val : "unset");
+			
+			isset[i] = ptr_val ? 1 : 0;
+			
+			if(type == pnl_action_var_str) {
+				*strings[offset] = ptr_val ? *ptr_val : null;
+			} else if(type == pnl_action_var_int) {
+				ints[offset] = ptr_val ? toLong(*ptr_val) : 0;
+			} else if(type == pnl_action_var_uint) {
+				uints[offset] = ptr_val ? toUlong(*ptr_val) : 0;
 			}
 		}
+	}
+	
+	protected void unload() {
 		
-		if(uints.length) {
-			foreach(string str, inout ulong val; uints) {
-				string* ptr_str = str in POST;
-				
-				val = ptr_str ? toUlong(*ptr_str) : 0;
-				isset[str] = ptr_str ? 1 : 0;
-			}
-		}
 	}
 }
 
@@ -252,7 +234,7 @@ version(unittests) {
 class Array : TemplateObject {
 	static const string name = "Array";
 	
-	static TemplateObject factory(inout PNL pnl, inout string[string] params) {
+	static TemplateObject factory(inout PNL pnl, string cmd, inout string[string] params) {
 		// factory method to produce these objects ;)
 		typeof(this) obj = new typeof(this)();
 		obj.register(pnl, params);
@@ -510,8 +492,21 @@ version(unittests) {
 class R_Stats : TemplateObject {
 	static const string name = "Stats";
 	static R_Stats stats;
-	static TemplateObject factory(inout PNL pnl, inout string[string] params) {
-		// factory method to produce these objects :)
+	static this() {
+		stats = new typeof(this);
+	}
+	
+	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+		//pnl.registerInt(name ~ ".request_queries", &request_queries);
+		/*
+		pnl.registerString(name ~ ".firstname", &firstname);
+		pnl.registerString(name ~ ".lastname", &lastname);
+		pnl.registerString(name ~ ".photo", &photo);
+		pnl.registerFunction(name ~ ".is_friend", &is_friend);
+		pnl.registerFunction(name ~ ".invited_me", &invited_me);
+		pnl.registerFunction(name ~ ".invited_her", &invited_her);
+		*/
+		
 		return cast(TemplateObject)stats;
 	}
 	
@@ -526,19 +521,11 @@ class R_Stats : TemplateObject {
 	int page_requests;
 	
 	
-	void register(inout PNL pnl, inout string[string] params) {
-		pnl.registerInt(name ~ ".request_queries", &request_queries);
-		/*
-		pnl.registerString(name ~ ".firstname", &firstname);
-		pnl.registerString(name ~ ".lastname", &lastname);
-		pnl.registerString(name ~ ".photo", &photo);
-		pnl.registerFunction(name ~ ".is_friend", &is_friend);
-		pnl.registerFunction(name ~ ".invited_me", &invited_me);
-		pnl.registerFunction(name ~ ".invited_her", &invited_her);
-		*/
+	protected void load() {
+		
 	}
 	
-	void load() {
+	protected void unload() {
 		
 	}
 }
