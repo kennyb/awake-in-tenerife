@@ -192,7 +192,7 @@ class TemplateImg : TemplateInterface {
 			if(v_scope >= 0 && pnl.var_type[v_scope][var] == pnl_action_var_str) {
 				ptr_url = cast(string*)pnl.var_ptr[v_scope][var];
 			} else {
-				debug errorln("variable '", var, "' is not registered");
+				pnl.inlineError("variable '"~var~"' is not registered");
 			}
 			
 			

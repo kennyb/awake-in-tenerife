@@ -69,7 +69,7 @@ class TemplatePager : TemplateInterface {
 					ptr_page = cast(int*)pnl.var_ptr[v_scope][var];
 				}
 			} else {
-				debug errorln("variable '", var, "' is not registered");
+				pnl.inlineError("variable '"~var~"' is not registered");
 			}
 		}
 		
@@ -83,7 +83,7 @@ class TemplatePager : TemplateInterface {
 					ptr_last_page = cast(int*)pnl.var_ptr[v_scope][var];
 				}
 			} else {
-				debug errorln("variable '", var, "' is not registered");
+				pnl.inlineError("variable '"~var~"' is not registered");
 			}
 		}
 		

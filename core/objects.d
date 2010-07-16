@@ -21,30 +21,6 @@ extern void delegate() new_object(inout PNL pnl, string cmd, string name, inout 
 	//errorln("*** Loading Object: ", pnl.name, " :: ", name);
 	int instance = ((pnl.name in instance_count) && (name in instance_count[pnl.name])) ? ++instance_count[pnl.name][name] : 0;
 	
-	version(unittests) {
-		switch(name) {
-			// test objects
-			case "Url":
-				normal_objects[pnl.name][name][instance] = available_objects["Url"](pnl, cmd, params);
-				normal_objects[pnl.name][name][instance].register(pnl, cmd, params);
-				return &normal_objects[pnl.name][name][instance].load;
-				
-			case "TestObject":
-				normal_objects[pnl.name][name][instance] = new TestObject;
-				normal_objects[pnl.name][name][instance].register(pnl, cmd, params);
-				return &normal_objects[pnl.name][name][instance].load;
-				
-			case "TestStaticObject":
-				static_objects[name] = new TestStaticObject;
-				instance_count[pnl.name][name] = instance;
-				static_objects[name].register(pnl, cmd, params);
-				static_object_loaded[name][pnl.name] = true;
-				return &static_objects[name].load;
-			
-			default:
-		}
-	}
-	
 	//errorln("*** New Object: ", pnl.name, " :: ", name, " ", instance);
 	TemplateObject function(inout PNL pnl, string cmd, inout string[string] params)* ptr_obj = name in available_objects;
 	
@@ -531,16 +507,27 @@ class R_Stats : TemplateObject {
 }
 
 version(unittests) {
+	static this() {
+		PNL.registerObj("TestStaticObject", &TestStaticObject.create);
+		PNL.registerObj("TestObject", &TestObject.create);
+	}
+	
 	class TestStaticObject : TemplateObject {
 		import tango.stdc.stdlib : rand;
 		 
 		const string name = "TestStaticObject";
+		static typeof(this) obj;
 		uint url_uid;
 		int random = 22;
 		
-		void register(inout PNL pnl, inout string[string] params) {
+		TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+			if(!obj) {
+				obj = new typeof(this);
+			}
+			
 			pnl.registerUint("url_uid", &url_uid);
 			pnl.registerInt("random", &random);
+			return obj;
 		}
 		
 		void load() {
@@ -551,6 +538,10 @@ version(unittests) {
 			} else {
 				url_uid = 33;
 			}
+		}
+		
+		void unload() {
+			
 		}
 	}
 	
@@ -576,7 +567,13 @@ version(unittests) {
 		string text, text_utf8, empty_text;
 		string[] numbers;
 		
-		void register(inout PNL pnl, inout string[string] params) {
+		protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+			auto obj = new typeof(this);
+			obj.register(pnl, params);
+			return obj;
+		}
+		
+		protected void register(inout PNL pnl, inout string[string] params) {
 			my_inst = inst++;
 			pnl.registerUint("number", &number);
 			pnl.registerUint("number2", &number2);
@@ -622,7 +619,7 @@ version(unittests) {
 							ptr_number3 = cast(int*)pnl.var_ptr[v_scope][var];
 						}
 					} else {
-						debug errorln("variable '", var, "' is not registered");
+						pnl.inlineError("variable '"~var~"' is not registered");
 					}
 				} else if(value[0] >= '0' && value[0] <= '9') {
 					if(key == "number2") {
@@ -644,6 +641,10 @@ version(unittests) {
 			if(ptr_number3) {
 				number3 = *ptr_number3;
 			}
+		}
+		
+		void unload() {
+			
 		}
 		
 		// increment the loop functions go here....

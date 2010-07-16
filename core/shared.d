@@ -126,9 +126,6 @@ version(unittests) {
 		
 		PNL.reset_state();
 		
-		
-		static_objects = null;
-		static_object_loaded = null;
 		POST = null;
 		FUNC = null;
 		PANELS = null;
@@ -136,6 +133,7 @@ version(unittests) {
 	}
 	
 	extern(C) void RUN_UNITTESTS() {
+		return;
 		int total = cast(int) test_suites.length;
 		noticeln("-- running ", total, " unittests --");
 		

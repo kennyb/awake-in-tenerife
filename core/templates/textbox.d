@@ -47,7 +47,7 @@ import shared;
 						text = null;
 					}
 				} else {
-					debug errorln("variable '", var, "' is not registered");
+					pnl.inlineError("variable '"~var~"' is not registered");
 				}
 			}
 		} else {
@@ -67,7 +67,7 @@ import shared;
 						clicked_text = null;
 					}
 				} else {
-					debug errorln("variable '", var, "' is not registered");
+					pnl.inlineError("variable '"~var~"' is not registered");
 				}
 			}
 		} else {
@@ -263,7 +263,7 @@ class TemplateTBox {
 						value = null;
 					}
 				} else {
-					debug errorln("variable '", var, "' is not registered");
+					pnl.inlineError("variable '"~var~"' is not registered");
 				}
 			}
 		}

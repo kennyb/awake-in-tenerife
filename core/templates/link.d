@@ -159,7 +159,7 @@ class TemplateLink {
 					
 					href_var_loc ~= href.length;
 				} else {
-					debug errorln("variable '", var, "' is not registered");
+					pnl.inlineError("variable '"~var~"' is not registered");
 				}
 			} else {
 				if(arg_count++) {
@@ -552,6 +552,7 @@ version(unittests) {
 			assert("link6" in PNL.pnl);
 			PNL.pnl["link6"].render();
 			
+			noticeln(out_tmp[0 .. out_ptr]);
 			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','uid=7')" href="?z=k:invite,j:profile&uid=7" class="custom">` ||
 				out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','uid=7')" href="?z=j:profile,k:invite&uid=7" class="custom">`);
 		}

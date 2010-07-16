@@ -67,7 +67,7 @@ class TemplateDate {
 						ptr_date = cast(int*)pnl.var_ptr[v_scope][var];
 					}
 				} else {
-					debug errorln("variable '", var, "' is not registered");
+					pnl.inlineError("variable '"~var~"' is not registered");
 				}
 			}
 			
