@@ -50,6 +50,7 @@ class HttpRequest {
 	public int status;
 	public string[string] cookie;
 	public int timeout = 5;
+	public bool fresh_cookies = true;
 	
 	static this() {
 		exec("rm -f /tmp/http_request.*");
@@ -101,21 +102,27 @@ class HttpRequest {
 		string[] curl_args;
 		status = FAILURE;
 		string header_file = filename ~ ".header";
-		string cookies_file = "/tmp/http_request."~host~".cookies";
+		string cookies_file = fresh_cookies ? filename ~ ".cookies" : "/tmp/http_request."~host~".cookies";
 		
 		string[] curl_cmd;// = `curl --silent -o ` ~ filename;
 		curl_cmd ~= "curl";
-		curl_cmd ~= "-s";
-		curl_cmd ~= "-i";
-		curl_cmd ~= "-L";
-		curl_cmd ~= "-D";
+		curl_cmd ~= "--compressed";
+		//curl_cmd ~= "-A";
+		//curl_cmd ~= "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.6) Gecko/20100627 Gentoo Firefox/3.6.6";
+		//curl_cmd ~= "-s"; // silent
+		curl_cmd ~= "-v"; // verbose
+		curl_cmd ~= "-i"; // include headers in output
+		curl_cmd ~= "-L"; // follow location hints
+		curl_cmd ~= "-D"; // output header to file:
 		curl_cmd ~= header_file;
-		curl_cmd ~= "-b";
-		curl_cmd ~= cookies_file;
 		curl_cmd ~= "-c";
 		curl_cmd ~= cookies_file;
 		curl_cmd ~= "-m";
 		curl_cmd ~= Integer.toString(timeout);
+		if(!fresh_cookies) {
+			curl_cmd ~= "-b"; // read cookies from this file:
+			curl_cmd ~= cookies_file;
+		}
 		
 		if(port != 80) {
 			uri ~= ":"~Integer.toString(port);
@@ -244,6 +251,9 @@ class HttpRequest {
 				//File.set(filename, output);
 				Path.remove(filename);
 				Path.remove(header_file);
+				if(fresh_cookies) {
+					Path.remove(cookies_file);
+				}
 				
 				if(tidy_it) {
 					noticeln("tidying... ", output[0 .. 50]);
