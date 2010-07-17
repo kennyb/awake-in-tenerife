@@ -17,17 +17,17 @@ The static method of the object can add a reference to itself in the array, and 
 
 */
 
-extern void delegate() new_object(inout PNL pnl, string cmd, string name, string[string] params) {
+extern void delegate() new_object(PNL pnl, string cmd, string name, string[string] params) {
 	//errorln("*** Loading Object: ", pnl.name, " :: ", name);
 	int instance = ((pnl.name in instance_count) && (name in instance_count[pnl.name])) ? ++instance_count[pnl.name][name] : 0;
 	
 	//errorln("*** New Object: ", pnl.name, " :: ", name, " ", instance);
-	TemplateObject function(inout PNL pnl, string cmd, inout string[string] params)* ptr_obj = name in available_objects;
+	TemplateObject function(PNL pnl, string cmd, string[string] params)* ptr_obj = name in available_objects;
 	
 	if(ptr_obj) {
 		instance_count[pnl.name][name] = instance;
 		
-		TemplateObject function(inout PNL pnl, string cmd, inout string[string] params) obj_init = *ptr_obj;
+		TemplateObject function(PNL pnl, string cmd, string[string] params) obj_init = *ptr_obj;
 		TemplateObject obj = obj_init(pnl, cmd, params);
 		normal_objects[pnl.name][name][instance] = obj;
 		if(obj) {
@@ -62,13 +62,13 @@ class Url : TemplateObject {
 	private ulong[] uints;
 	private string*[] strings;
 	
-	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+	protected TemplateObject create(PNL pnl, string cmd, string[string] params) {
 		auto obj = new typeof(this)();
 		obj.register(pnl, params);
 		return obj;
 	}
 	
-	private void register(inout PNL pnl, inout string[string] params) {
+	private void register(PNL pnl, string[string] params) {
 		string parent = "";
 		string* ptr_parent = "$parent" in params;
 		if(ptr_parent) {
@@ -467,7 +467,7 @@ class R_Stats : TemplateObject {
 		stats = new typeof(this);
 	}
 	
-	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+	protected TemplateObject create(PNL pnl, string cmd, string[string] params) {
 		//pnl.registerInt(name ~ ".request_queries", &request_queries);
 		/*
 		pnl.registerString(name ~ ".firstname", &firstname);

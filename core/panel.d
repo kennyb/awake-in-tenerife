@@ -31,7 +31,7 @@ interface TemplateInterface {
 }
 
 interface TemplateObject {
-	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params);
+	protected TemplateObject create(PNL pnl, string cmd, string[string] params);
 	protected void load();
 	protected void unload();
 }
@@ -1130,7 +1130,7 @@ final class PNL {
 	}
 	
 	alias registerObj registerIndex;
-	static void registerObj(string name, TemplateObject function(inout PNL pnl, string cmd, inout string[string] params) factory) {
+	static void registerObj(string name, TemplateObject function(PNL pnl, string cmd, string[string] params) factory) {
 		available_objects[name] = factory;
 	}
 	

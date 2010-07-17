@@ -14,7 +14,7 @@ public import tango.stdc.time;
 version = printtest;
 
 // Object list:
-TemplateObject function(inout PNL pnl, string cmd, inout string[string] params)[string] available_objects;
+TemplateObject function(PNL pnl, string cmd, string[string] params)[string] available_objects;
 void function(string input)[string] text_transforms;
 
 // [panel name] [object name] [scope] [instance #]
