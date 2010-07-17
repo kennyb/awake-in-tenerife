@@ -269,7 +269,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 				if(id) {
 					load_id(id);
 				} else {
-					noticeln("City.id: ", "id" in saved_query ? saved_query["id"] : "null");
 					load(saved_query, page_offset, page_size);
 				}
 			}
@@ -293,10 +292,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					
 					make_query_local(b, parsed_query);
 					cursor = _query(&b, this.page_offset, this.page_size);
-					loop();
-					skip_loop = cursor != null && this.num_results > 1 ? true : false;
-					//skip_loop = false;
-					noticeln("skip_loop: ", skip_loop);
+					skip_loop = false;
+					if(loop()) {
+						skip_loop = true;
+					}
+					
 					bson_print(&b);
 					bson_destroy(&b);
 				} else {
@@ -615,8 +615,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		cursor = _query(&b, this.page_offset, this.page_size);
 		
 		if(cursor != null) {
-			loop();
-			if(cursor != null) {
+			skip_loop = false;
+			if(loop()) {
 				skip_loop = true;
 			}
 		}
@@ -1085,7 +1085,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 										if(scope_offset != -1) {
 											uint type = toUint(val[1 .. scope_offset]);
 											uint dyn_var = toUint(val[++scope_offset .. $-1]);
-											noticeln("type: ", type, " var: ", dyn_var, " len: ", dyn_vars.length);
+											//noticeln("type: ", type, " var: ", dyn_var, " len: ", dyn_vars.length);
 											
 											if(dyn_var < dyn_vars.length) {
 												auto ptr_var = dyn_vars[dyn_var];
