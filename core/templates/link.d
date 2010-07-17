@@ -490,7 +490,7 @@ version(unittests) {
 			assert("link1" in PNL.pnl);
 			version(testbytecode) PNL.pnl["link1"].print_bytecode;
 			PNL.pnl["link1"].render();
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile')" href="?z=j:profile">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('j:profile')" href="?z=j:profile">`);
 		}
 		
 		void test2() {
@@ -502,7 +502,7 @@ version(unittests) {
 			assert("link2" in PNL.pnl);
 			version(testbytecode) PNL.pnl["link2"].print_bytecode;
 			PNL.pnl["link2"].render();
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile')" href="?z=j:profile" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('j:profile')" href="?z=j:profile" class="custom">`);
 		}
 		
 		void test3() {
@@ -513,7 +513,7 @@ version(unittests) {
 			
 			assert("link3" in PNL.pnl);
 			PNL.pnl["link3"].render();
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile')" href="?z=j:profile" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('j:profile')" href="?z=j:profile" class="custom">`);
 		}
 		
 		void test4() {
@@ -525,8 +525,8 @@ version(unittests) {
 			assert("link4" in PNL.pnl);
 			PNL.pnl["link4"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile')" href="?z=k:invite,j:profile" class="custom">` ||
-				out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite')" href="?z=j:profile,k:invite" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile')" href="?z=k:invite,j:profile" class="custom">`,
+				`<a onclick="return z('j:profile,k:invite')" href="?z=j:profile,k:invite" class="custom">`);
 		}
 		
 		void test5() {
@@ -538,8 +538,8 @@ version(unittests) {
 			assert("link5" in PNL.pnl);
 			PNL.pnl["link5"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','uid=11')" href="?z=k:invite,j:profile&uid=11" class="custom">` ||
-				out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','uid=11')" href="?z=j:profile,k:invite&uid=11" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','uid=11')" href="?z=k:invite,j:profile&uid=11" class="custom">`,
+				`<a onclick="return z('j:profile,k:invite','uid=11')" href="?z=j:profile,k:invite&uid=11" class="custom">`);
 		}
 		
 		void test6() {
@@ -553,8 +553,8 @@ version(unittests) {
 			PNL.pnl["link6"].render();
 			
 			noticeln(out_tmp[0 .. out_ptr]);
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','uid=7')" href="?z=k:invite,j:profile&uid=7" class="custom">` ||
-				out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','uid=7')" href="?z=j:profile,k:invite&uid=7" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','uid=7')" href="?z=k:invite,j:profile&uid=7" class="custom">`,
+				`<a onclick="return z('j:profile,k:invite','uid=7')" href="?z=j:profile,k:invite&uid=7" class="custom">`);
 		}
 		
 		void test7() {
@@ -567,8 +567,8 @@ version(unittests) {
 			assert("link7" in PNL.pnl);
 			PNL.pnl["link7"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','lala=word%20up%20homie&uid=7')" href="?z=k:invite,j:profile&lala=word%20up%20homie&uid=7" class="custom">` ||
-				out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','uid=7&lala=word%20up%20homie')" href="?z=j:profile,k:invite&uid=7&lala=word%20up%20homie" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','lala=word%20up%20homie&uid=7')" href="?z=k:invite,j:profile&lala=word%20up%20homie&uid=7" class="custom">`,
+				`<a onclick="return z('j:profile,k:invite','uid=7&lala=word%20up%20homie')" href="?z=j:profile,k:invite&uid=7&lala=word%20up%20homie" class="custom">`);
 		}
 		
 		void test8() {
@@ -582,8 +582,8 @@ version(unittests) {
 			assert("link8" in PNL.pnl);
 			PNL.pnl["link8"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `test text<a onclick="return z('k:invite,j:profile','lala=test%20text&uid=7')" href="?z=k:invite,j:profile&lala=test%20text&uid=7" class="custom">` ||
-				out_tmp[0 .. out_ptr] == `test text<a onclick="return z('j:profile,k:invite','uid=7&lala=test%20text')" href="?z=j:profile,k:invite&uid=7&lala=test%20text" class="custom">`);
+			assertEq(out_tmp[0 .. out_ptr], `test text<a onclick="return z('k:invite,j:profile','lala=test%20text&uid=7')" href="?z=k:invite,j:profile&lala=test%20text&uid=7" class="custom">`,
+				`test text<a onclick="return z('j:profile,k:invite','uid=7&lala=test%20text')" href="?z=j:profile,k:invite&uid=7&lala=test%20text" class="custom">`);
 		}
 		
 		void test9() {
@@ -597,8 +597,8 @@ version(unittests) {
 			assert("link9" in PNL.pnl);
 			PNL.pnl["link9"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `test text<input type="button" onclick="return z('k:invite,j:profile','lala=test%20text&uid=7')" href="?z=k:invite,j:profile&lala=test%20text&uid=7" class="custom" value="MOOO!">` ||
-				out_tmp[0 .. out_ptr] == `test text<input type="button" onclick="return z('j:profile,k:invite','uid=7&lala=test%20text')" href="?z=j:profile,k:invite&uid=7&lala=test%20text" class="custom" value="MOOO!">`);
+			assertEq(out_tmp[0 .. out_ptr], `test text<input type="button" onclick="return z('k:invite,j:profile','lala=test%20text&uid=7')" href="?z=k:invite,j:profile&lala=test%20text&uid=7" class="custom" value="MOOO!">`,
+				`test text<input type="button" onclick="return z('j:profile,k:invite','uid=7&lala=test%20text')" href="?z=j:profile,k:invite&uid=7&lala=test%20text" class="custom" value="MOOO!">`);
 		}
 		
 		void test10() {
@@ -614,8 +614,8 @@ version(unittests) {
 			assert("link10" in PNL.pnl);
 			PNL.pnl["link10"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `11-11<input type="button" onclick="return z('k:invite,j:profile','lala=test%20text&uid=11')" href="?z=k:invite,j:profile&lala=test%20text&uid=11" class="custom" value="MOOO!">` ||
-				out_tmp[0 .. out_ptr] == `11-11<input type="button" onclick="return z('j:profile,k:invite','uid=11&lala=test%20text')" href="?z=j:profile,k:invite&uid=11&lala=test%20text" class="custom" value="MOOO!">`);
+			assertEq(out_tmp[0 .. out_ptr], `11-11<input type="button" onclick="return z('k:invite,j:profile','lala=test%20text&uid=11')" href="?z=k:invite,j:profile&lala=test%20text&uid=11" class="custom" value="MOOO!">`,
+				`11-11<input type="button" onclick="return z('j:profile,k:invite','uid=11&lala=test%20text')" href="?z=j:profile,k:invite&uid=11&lala=test%20text" class="custom" value="MOOO!">`);
 		}
 	}
 }
@@ -755,8 +755,8 @@ version(unittests) {
 			version(testbytecode) PNL.pnl["form1"].print_bytecode;
 			PNL.pnl["form1"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `<form method="post" action="?z=k:invite,j:profile&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>` ||
-				out_tmp[0 .. out_ptr] == `<form method="post" action="?z=j:profile,k:invite&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
+			assertEq(out_tmp[0 .. out_ptr], `<form method="post" action="?z=k:invite,j:profile&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`,
+				`<form method="post" action="?z=j:profile,k:invite&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
 			
 			PNL.funcs.remove("test_function");
 		}
@@ -777,8 +777,8 @@ version(unittests) {
 			version(testbytecode) PNL.pnl["form2"].print_bytecode;
 			PNL.pnl["form2"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `<form method="post" enctype="multipart/form-data" action="?z=k:invite,j:profile&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>` ||
-				out_tmp[0 .. out_ptr] == `<form method="post" enctype="multipart/form-data" action="?z=j:profile,k:invite&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
+			assertEq(out_tmp[0 .. out_ptr], `<form method="post" enctype="multipart/form-data" action="?z=k:invite,j:profile&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`,
+				`<form method="post" enctype="multipart/form-data" action="?z=j:profile,k:invite&f=test_function" onsubmit="new IF(this);return false" class="custom"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
 			
 			PNL.funcs.remove("test_function");
 		}
@@ -800,7 +800,7 @@ version(unittests) {
 			assert("form3" in PNL.pnl);
 			version(testbytecode) PNL.pnl["form3"].print_bytecode;
 			PNL.pnl["form3"].render();
-			assert(out_tmp[0 .. out_ptr] == `<form method="post" action="?z=j:profile&f_hash=lalalalala&f=test_function" onsubmit="new IF(this);return false"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
+			assertEq(out_tmp[0 .. out_ptr], `<form method="post" action="?z=j:profile&f_hash=lalalalala&f=test_function" onsubmit="new IF(this);return false"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
 			
 			PNL.funcs.remove("test_function");
 		}
@@ -819,7 +819,7 @@ version(unittests) {
 			assert("form4" in PNL.pnl);
 			PNL.pnl["form4"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `<form method="post" action="?z=m:p" onsubmit="new IF(this);return false"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
+			assertEq(out_tmp[0 .. out_ptr], `<form method="post" action="?z=m:p" onsubmit="new IF(this);return false"><input type='text' name='username' /><input type='text' name='password' /><input type='submit' value='Submit Button' /></form>`);
 		}
 	}
 }

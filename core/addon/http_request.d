@@ -143,7 +143,6 @@ class HttpRequest {
 		if(i_existing_cookie != -1) {
 			auto existing_cookie = req_header.between("\r\nCookie: ", "\r\n", i_existing_cookie).trim();
 			if(existing_cookie.length) {
-				noticeln("parsing existing cookie: ", existing_cookie);
 				cookie.parse_cookie(existing_cookie);
 				req_header = req_header[0 .. i_existing_cookie] ~ req_header[i_existing_cookie + existing_cookie.length .. $];
 			}
@@ -162,7 +161,7 @@ class HttpRequest {
 		
 		//try {
 			//File.set(cookies_file, "");
-			noticeln("exec: ", curl_cmd.join(' '));
+			//noticeln("exec: ", curl_cmd.join(' '));
 			auto p_curl = new Process(curl_cmd, null);
 			
 			p_curl.execute();
@@ -256,7 +255,6 @@ class HttpRequest {
 				}
 				
 				if(tidy_it) {
-					noticeln("tidying... ", output[0 .. 50]);
 					File.set(filename ~ ".tidy", output.replace('\n', ' ').remove('\r'));
 					auto p_tidy = new Process(`tidy -w 10000 -asxhtml -n -b -utf8 -m ` ~ filename ~ ".tidy", null);
 					scope(exit) delete p_tidy;
@@ -267,7 +265,6 @@ class HttpRequest {
 					Path.remove(filename ~ ".tidy.err");
 				}
 				
-				noticeln("output: ", output.length);
 				return status;
 			}
 		}

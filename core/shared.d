@@ -133,7 +133,6 @@ version(unittests) {
 	}
 	
 	extern(C) void RUN_UNITTESTS() {
-		return;
 		int total = cast(int) test_suites.length;
 		noticeln("-- running ", total, " unittests --");
 		

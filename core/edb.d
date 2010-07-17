@@ -2282,20 +2282,20 @@ version(unittests) {
 			assert("edb1" in PNL.pnl);
 			PNL.pnl["edb1"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `_id:1,uid:11,d_created:1000`);
+			assertEq(out_tmp[0 .. out_ptr], `_id:1,uid:11,d_created:1000`);
 		}
 		
 		void template2() {
 			PNL.parse_text(`
 				<?interface panel:'edb2' ?>
-				<?load UnittestPhotoTag {uid: 11, $page_size: 1} ?>
+				<?load UnittestPhotoTag {uid: 11, $page_size: 2} ?>
 				_id:<?=UnittestPhotoTag._id%>,uid:<?=UnittestPhotoTag.uid?>,d_created:<?=UnittestPhotoTag.d_created?>
 			`);
 			
 			assert("edb2" in PNL.pnl);
 			PNL.pnl["edb2"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `_id:1,uid:11,d_created:1000`);
+			assertEq(out_tmp[0 .. out_ptr], `_id:1,uid:11,d_created:1000`);
 		}
 		
 		void template3() {
@@ -2309,7 +2309,7 @@ version(unittests) {
 			assert("edb3" in PNL.pnl);
 			PNL.pnl["edb3"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `_id:1,uid:11,d_created:1000,`);
+			assertEq(out_tmp[0 .. out_ptr], `_id:1,uid:11,d_created:1000,`);
 		}
 		
 		void template4() {
@@ -2323,7 +2323,7 @@ version(unittests) {
 			assert("edb4" in PNL.pnl);
 			PNL.pnl["edb4"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `_id:1,uid:11,d_created:1000,_id:3,uid:11,d_created:1100,`);
+			assertEq(out_tmp[0 .. out_ptr], `_id:1,uid:11,d_created:1000,_id:3,uid:11,d_created:1100,`);
 		}
 		
 		void template5() {
@@ -2337,7 +2337,7 @@ version(unittests) {
 			assert("edb5" in PNL.pnl);
 			PNL.pnl["edb5"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `_id:3,uid:11,d_created:1100,_id:1,uid:11,d_created:1000,`);
+			assertEq(out_tmp[0 .. out_ptr], `_id:3,uid:11,d_created:1100,_id:1,uid:11,d_created:1000,`);
 		}
 		
 		void template6() {
@@ -2353,19 +2353,19 @@ version(unittests) {
 			assert("edb6" in PNL.pnl);
 			POST["uid"] = "11";
 			PNL.pnl["edb6"].render();
-			assert(out_tmp[0 .. out_ptr] == `(11)_id:3,uid:11,d_created:1100,_id:1,uid:11,d_created:1000,`);
+			assertEq(out_tmp[0 .. out_ptr], `(11)_id:3,uid:11,d_created:1100,_id:1,uid:11,d_created:1000,`);
 			
 			out_ptr = 0;
 			
 			POST["uid"] = "1058";
 			PNL.pnl["edb6"].render();
-			assert(out_tmp[0 .. out_ptr] == `(1058)_id:2,uid:1058,d_created:1100,`);
+			assertEq(out_tmp[0 .. out_ptr], `(1058)_id:2,uid:1058,d_created:1100,`);
 			
 			out_ptr = 0;
 			
 			POST["uid"] = "1111";
 			PNL.pnl["edb6"].render();
-			assert(out_tmp[0 .. out_ptr] == `(1111)`);
+			assertEq(out_tmp[0 .. out_ptr], `(1111)`);
 		}
 		
 		void template7() {
@@ -2381,19 +2381,19 @@ version(unittests) {
 			assert("edb7" in PNL.pnl);
 			POST["pic"] = "picture 1";
 			PNL.pnl["edb7"].render();
-			assert(out_tmp[0 .. out_ptr] == `(picture 1)_id:1,uid:11,d_created:1000,`);
+			assertEq(out_tmp[0 .. out_ptr], `(picture 1)_id:1,uid:11,d_created:1000,`);
 			
 			out_ptr = 0;
 			
 			POST["pic"] = "picture 2";
 			PNL.pnl["edb7"].render();
-			assert(out_tmp[0 .. out_ptr] == `(picture 2)_id:3,uid:11,d_created:1100,_id:2,uid:1058,d_created:1100,`);
+			assertEq(out_tmp[0 .. out_ptr], `(picture 2)_id:3,uid:11,d_created:1100,_id:2,uid:1058,d_created:1100,`);
 			
 			out_ptr = 0;
 			
 			POST["pic"] = "no picture";
 			PNL.pnl["edb7"].render();
-			assert(out_tmp[0 .. out_ptr] == `(no picture)`);
+			assertEq(out_tmp[0 .. out_ptr], `(no picture)`);
 		}
 		
 		void template8() {
@@ -2406,7 +2406,7 @@ version(unittests) {
 			assert(UnittestPhotoTag.count("{uid: 11}") == 2);
 			assert("edb8" in PNL.pnl);
 			PNL.pnl["edb8"].render();
-			assert(out_tmp[0 .. out_ptr] == `count:2`);
+			assertEq(out_tmp[0 .. out_ptr], `count:2`);
 		}
 		
 		void template8_1() {
@@ -2418,7 +2418,7 @@ version(unittests) {
 			
 			assert("edb8_1" in PNL.pnl);
 			PNL.pnl["edb8_1"].render();
-			assert(out_tmp[0 .. out_ptr] == `count:2`);
+			assertEq(out_tmp[0 .. out_ptr], `count:2`);
 		}
 		
 		void template8_2() {
@@ -2431,7 +2431,7 @@ version(unittests) {
 			
 			assert("edb8_2" in PNL.pnl);
 			PNL.pnl["edb8_2"].render();
-			assert(out_tmp[0 .. out_ptr] == `count:2`);
+			assertEq(out_tmp[0 .. out_ptr], `count:2`);
 		}
 		
 		void template9() {
@@ -2445,7 +2445,7 @@ version(unittests) {
 			assert("edb9" in PNL.pnl);
 			PNL.pnl["edb9"].render();
 			
-			assert(out_tmp[0 .. out_ptr] == `(2)_id:1,uid:11,d_created:1000`);
+			assertEq(out_tmp[0 .. out_ptr], `(2)_id:1,uid:11,d_created:1000`);
 		}
 		
 		void template10() {
@@ -2462,12 +2462,12 @@ version(unittests) {
 			assert("edb10" in PNL.pnl);
 			POST["pic"] = "picture 1";
 			PNL.pnl["edb10"].render();
-			assert(out_tmp[0 .. out_ptr] == `(picture 1:1)_id:1,uid:11,d_created:1000,`);
+			assertEq(out_tmp[0 .. out_ptr], `(picture 1:1)_id:1,uid:11,d_created:1000,`);
 			out_ptr = 0;
 			
 			POST["pic"] = "picture 2";
 			PNL.pnl["edb10"].render();
-			assert(out_tmp[0 .. out_ptr] == `(picture 2:2)_id:3,uid:11,d_created:1100,_id:2,uid:1058,d_created:1100,`);
+			assertEq(out_tmp[0 .. out_ptr], `(picture 2:2)_id:3,uid:11,d_created:1100,_id:2,uid:1058,d_created:1100,`);
 		}
 	}
 	

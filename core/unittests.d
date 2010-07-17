@@ -35,6 +35,34 @@ version(unittests) {
 		void test() {
 			errorln("you forgot to extend the Unittest.test() function");
 		}
+		
+		size_t checks_passed;
+		size_t checks_failed;
+		
+		void assertEq(T, T2...)(T val1, T2 vals) {
+			bool passed = false;
+			
+			foreach(val2; vals) {
+				if(val1 == val2) {
+					checks_passed++;
+					passed = true;
+				}
+				
+				
+				
+				//assert(val1 == val2);
+			}
+			
+			if(!passed) {
+				noticeln("** var: '", val1, "'");
+				foreach(val2; vals) {
+					noticeln("** cmp: '", val2, "'");
+				}
+				
+				checks_failed++;
+				assert(false);
+			}
+		}
 	}
 	
 	/*
@@ -569,7 +597,7 @@ unittest {
 		PNL.pnl["test1"].render();
 		
 		stdoutln("out: '^'", out_tmp[0 .. out_ptr]);
-		//assert(out_tmp[0 .. out_ptr] == "lala version 1");
+		//assertEq(out_tmp[0 .. out_ptr], "lala version 1");
 		
 		
 	}); */

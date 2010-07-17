@@ -2918,6 +2918,7 @@ string js_optimizer(string str) {
 }
 
 unittest {
+	/+
 	UNIT("panel text #1", () {
 		string t = `
 		<?interface panel: 'text1' ?>
@@ -2929,7 +2930,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text1"].print_bytecode;
 		PNL.pnl["text1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "LALA");
+		assertEq(out_tmp[0 .. out_ptr], "LALA");
 	});
 	
 	UNIT("panel text #2", () {
@@ -2944,7 +2945,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text2"].print_bytecode;
 		PNL.pnl["text2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "LALA");
+		assertEq(out_tmp[0 .. out_ptr], "LALA");
 	});
 	
 	UNIT("panel text #3", () {
@@ -2962,7 +2963,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text3"].print_bytecode;
 		PNL.pnl["text3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "7");
+		assertEq(out_tmp[0 .. out_ptr], "7");
 	});
 	
 	UNIT("panel text #4", () {
@@ -2977,7 +2978,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text4"].print_bytecode;
 		PNL.pnl["text4"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "LALA7LALA");
+		assertEq(out_tmp[0 .. out_ptr], "LALA7LALA");
 	});
 	
 	UNIT("panel text #5", () {
@@ -2996,7 +2997,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text5"].print_bytecode;
 		PNL.pnl["text5"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "LALA 7 LALA LALA");
+		assertEq(out_tmp[0 .. out_ptr], "LALA 7 LALA LALA");
 	});
 	
 	UNIT("panel text #6", () {
@@ -3013,7 +3014,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text6"].print_bytecode;
 		PNL.pnl["text6"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "LALA test text LALA");
+		assertEq(out_tmp[0 .. out_ptr], "LALA test text LALA");
 	});
 	
 	UNIT("panel text #7", () {
@@ -3030,7 +3031,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text7"].print_bytecode;
 		PNL.pnl["text7"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "7");
+		assertEq(out_tmp[0 .. out_ptr], "7");
 	});
 	
 	UNIT("panel str truncate #1", () {
@@ -3046,7 +3047,7 @@ unittest {
 		version(testbytecode) PNL.pnl["str_truncate_1"].print_bytecode;
 		PNL.pnl["str_truncate_1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "texttest t...");
+		assertEq(out_tmp[0 .. out_ptr], "texttest t...");
 	});
 	
 	UNIT("panel str truncate #2", () {
@@ -3062,7 +3063,7 @@ unittest {
 		version(testbytecode) PNL.pnl["str_truncate_2"].print_bytecode;
 		PNL.pnl["str_truncate_2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "$³²¹ $...");
+		assertEq(out_tmp[0 .. out_ptr], "$³²¹ $...");
 	});
 	
 	UNIT("panel text #9", () {
@@ -3081,7 +3082,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text9"].print_bytecode;
 		PNL.pnl["text9"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "LALA7LALA7 7LALA");
+		assertEq(out_tmp[0 .. out_ptr], "LALA7LALA7 7LALA");
 	});
 	
 	UNIT("panel text #10", () {
@@ -3099,7 +3100,7 @@ unittest {
 		version(testbytecode) PNL.pnl["text10"].print_bytecode;
 		PNL.pnl["text10"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/2000/REC-xhtml1-20000126/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" /><title>testing</title>`);
+		assertEq(out_tmp[0 .. out_ptr], `<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/2000/REC-xhtml1-20000126/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en"><head><meta http-equiv="Content-Type" content="application/xhtml+xml; charset=utf-8" /><title>testing</title>`);
 	});
 	
 	UNIT("if #1", () {
@@ -3120,7 +3121,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if1"].print_bytecode;
 		PNL.pnl["if1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("if #2", () {
@@ -3141,7 +3142,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if2"].print_bytecode;
 		PNL.pnl["if2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("if #3", () {
@@ -3162,7 +3163,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if3"].print_bytecode;
 		PNL.pnl["if3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("if #4", () {
@@ -3187,7 +3188,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if4"].print_bytecode;
 		PNL.pnl["if4"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("if #5", () {
@@ -3206,7 +3207,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if5"].print_bytecode;
 		PNL.pnl["if5"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("if #6", () {
@@ -3225,7 +3226,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if6"].print_bytecode;
 		PNL.pnl["if6"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "lala");
+		assertEq(out_tmp[0 .. out_ptr], "lala");
 	});
 	
 	UNIT("if #7", () {
@@ -3248,7 +3249,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if7"].print_bytecode;
 		PNL.pnl["if7"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "lala");
+		assertEq(out_tmp[0 .. out_ptr], "lala");
 	});
 	
 	UNIT("if #8", () {
@@ -3267,7 +3268,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if8"].print_bytecode;
 		PNL.pnl["if8"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("if #9", () {
@@ -3287,7 +3288,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if9"].print_bytecode;
 		PNL.pnl["if9"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "77 7");
+		assertEq(out_tmp[0 .. out_ptr], "77 7");
 	});
 	
 	UNIT("if #10", () {
@@ -3308,7 +3309,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if10"].print_bytecode;
 		PNL.pnl["if10"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "7 7");
+		assertEq(out_tmp[0 .. out_ptr], "7 7");
 	});
 	
 	UNIT("if #11", () {
@@ -3327,7 +3328,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if11"].print_bytecode;
 		PNL.pnl["if11"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #12", () {
@@ -3348,7 +3349,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if12"].print_bytecode;
 		PNL.pnl["if12"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #13", () {
@@ -3367,7 +3368,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if13"].print_bytecode;
 		PNL.pnl["if13"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #14", () {
@@ -3386,7 +3387,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if14"].print_bytecode;
 		PNL.pnl["if14"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #15", () {
@@ -3405,7 +3406,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if15"].print_bytecode;
 		PNL.pnl["if15"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #16", () {
@@ -3439,7 +3440,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if16"].print_bytecode;
 		PNL.pnl["if16"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "goodgoodgoodgood");
+		assertEq(out_tmp[0 .. out_ptr], "goodgoodgoodgood");
 	});
 	
 	UNIT("if #17", () {
@@ -3473,7 +3474,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if17"].print_bytecode;
 		PNL.pnl["if17"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "goodgoodgoodgood");
+		assertEq(out_tmp[0 .. out_ptr], "goodgoodgoodgood");
 	});
 	
 	UNIT("if #18", () {
@@ -3492,7 +3493,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if18"].print_bytecode;
 		PNL.pnl["if18"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #19", () {
@@ -3511,7 +3512,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if19"].print_bytecode;
 		PNL.pnl["if19"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #20", () {
@@ -3540,7 +3541,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if20"].print_bytecode;
 		PNL.pnl["if20"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "goodgoodgood");
+		assertEq(out_tmp[0 .. out_ptr], "goodgoodgood");
 	});
 	
 	UNIT("if #21", () {
@@ -3559,7 +3560,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if21"].print_bytecode;
 		PNL.pnl["if21"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("if #22", () {
@@ -3578,7 +3579,7 @@ unittest {
 		version(testbytecode) PNL.pnl["if22"].print_bytecode;
 		PNL.pnl["if22"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good");
+		assertEq(out_tmp[0 .. out_ptr], "good");
 	});
 	
 	UNIT("vars #1", () {
@@ -3599,7 +3600,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars1"].print_bytecode;
 		PNL.pnl["vars1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "7 7");
+		assertEq(out_tmp[0 .. out_ptr], "7 7");
 	});
 	
 	UNIT("vars #2", () {
@@ -3620,7 +3621,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars2"].print_bytecode;
 		PNL.pnl["vars2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good1");
+		assertEq(out_tmp[0 .. out_ptr], "good1");
 	});
 	
 	UNIT("vars #3", () {
@@ -3642,7 +3643,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars3"].print_bytecode;
 		PNL.pnl["vars3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "string");
+		assertEq(out_tmp[0 .. out_ptr], "string");
 	});
 	
 	UNIT("vars #4", () {
@@ -3665,7 +3666,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars4"].print_bytecode;
 		PNL.pnl["vars4"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good5");
+		assertEq(out_tmp[0 .. out_ptr], "good5");
 	});
 	
 	UNIT("vars #5", () {
@@ -3689,7 +3690,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars5"].print_bytecode;
 		PNL.pnl["vars5"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "good7");
+		assertEq(out_tmp[0 .. out_ptr], "good7");
 	});
 	
 	UNIT("vars #6", () {
@@ -3704,7 +3705,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars6"].print_bytecode;
 		PNL.pnl["vars6"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "&lt;htm...");
+		assertEq(out_tmp[0 .. out_ptr], "&lt;htm...");
 	});
 	
 	UNIT("vars #7", () {
@@ -3719,7 +3720,7 @@ unittest {
 		version(testbytecode) PNL.pnl["vars7"].print_bytecode;
 		PNL.pnl["vars7"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "<htm...");
+		assertEq(out_tmp[0 .. out_ptr], "<htm...");
 	});
 	
 	UNIT("utf-8 #1", () {
@@ -3732,7 +3733,7 @@ unittest {
 		assert("utf8-1" in PNL.pnl);
 		PNL.pnl["utf8-1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "this is a utf-8 string: éüñäí");
+		assertEq(out_tmp[0 .. out_ptr], "this is a utf-8 string: éüñäí");
 	});
 	
 	UNIT("utf-8 #2", () {
@@ -3747,7 +3748,7 @@ unittest {
 		version(testbytecode) PNL.pnl["utf8-2"].print_bytecode;
 		PNL.pnl["utf8-2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "éüñäí");
+		assertEq(out_tmp[0 .. out_ptr], "éüñäí");
 	});
 	
 	UNIT("utf-8 #3", () {
@@ -3762,7 +3763,7 @@ unittest {
 		version(testbytecode) PNL.pnl["utf8-3"].print_bytecode;
 		PNL.pnl["utf8-3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "éü");
+		assertEq(out_tmp[0 .. out_ptr], "éü");
 	});
 	
 	UNIT("loop #1", () {
@@ -3785,7 +3786,7 @@ unittest {
 		version(testbytecode) PNL.pnl["loop1"].print_bytecode;
 		PNL.pnl["loop1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "0 7 1 7 2 7 3 7 4 7 5 7 6 7 7 7 ");
+		assertEq(out_tmp[0 .. out_ptr], "0 7 1 7 2 7 3 7 4 7 5 7 6 7 7 7 ");
 	});
 	
 	UNIT("loop #2", () {
@@ -3808,7 +3809,7 @@ unittest {
 		version(testbytecode) PNL.pnl["loop2"].print_bytecode;
 		PNL.pnl["loop2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "0 71 72 73 74 75 76 77 7");
+		assertEq(out_tmp[0 .. out_ptr], "0 71 72 73 74 75 76 77 7");
 	});
 	
 	UNIT("loop #3", () {
@@ -3831,7 +3832,7 @@ unittest {
 		version(testbytecode) PNL.pnl["loop3"].print_bytecode;
 		PNL.pnl["loop3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "<b>0 7</b><b>1 7</b><b>2 7</b><b>3 7</b><b>4 7</b><b>5 7</b><b>6 7</b><b>7 7</b>");
+		assertEq(out_tmp[0 .. out_ptr], "<b>0 7</b><b>1 7</b><b>2 7</b><b>3 7</b><b>4 7</b><b>5 7</b><b>6 7</b><b>7 7</b>");
 	});
 	
 	UNIT("loop #4", () {
@@ -3854,7 +3855,7 @@ unittest {
 		version(testbytecode) PNL.pnl["loop4"].print_bytecode;
 		PNL.pnl["loop4"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "zeroonetwothreefourfivesixseven");
+		assertEq(out_tmp[0 .. out_ptr], "zeroonetwothreefourfivesixseven");
 	});
 	
 	UNIT("loop #5", () {
@@ -3885,7 +3886,7 @@ unittest {
 		version(testbytecode) PNL.pnl["loop5"].print_bytecode;
 		PNL.pnl["loop5"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "<table><tr><td><table><tr><td>zero</td></tr></table></td><td><table><tr><td>one</td></tr></table></td><td><table><tr><td>two</td></tr></table></td><td><table><tr><td>three</td></tr></table></td></tr><tr><td><table><tr><td>four</td></tr></table></td><td><table><tr><td>five</td></tr></table></td><td><table><tr><td>six</td></tr></table></td><td><table><tr><td>seven</td></tr></table></td></table>");
+		assertEq(out_tmp[0 .. out_ptr], "<table><tr><td><table><tr><td>zero</td></tr></table></td><td><table><tr><td>one</td></tr></table></td><td><table><tr><td>two</td></tr></table></td><td><table><tr><td>three</td></tr></table></td></tr><tr><td><table><tr><td>four</td></tr></table></td><td><table><tr><td>five</td></tr></table></td><td><table><tr><td>six</td></tr></table></td><td><table><tr><td>seven</td></tr></table></td></table>");
 	});
 	
 	UNIT("loop #6", () {
@@ -3920,7 +3921,7 @@ unittest {
 		version(testbytecode) PNL.pnl["loop6"].print_bytecode;
 		PNL.pnl["loop6"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == "1:0 71 72 73 74 75 76 77 72:0 71 72 73 74 75 76 77 7");
+		assertEq(out_tmp[0 .. out_ptr], "1:0 71 72 73 74 75 76 77 72:0 71 72 73 74 75 76 77 7");
 	});
 	
 	UNIT("functions #1", () {
@@ -3941,7 +3942,7 @@ unittest {
 		assert("functions1" in PNL.pnl);
 		version(testbytecode) PNL.pnl["functions1"].print_bytecode;
 		PNL.pnl["functions1"].render();
-		assert(out_tmp[0 .. out_ptr] == `before hello after`);
+		assertEq(out_tmp[0 .. out_ptr], `before hello after`);
 		
 	});
 	
@@ -3966,7 +3967,7 @@ unittest {
 		assert("functions2" in PNL.pnl);
 		version(testbytecode) PNL.pnl["functions2"].print_bytecode;
 		PNL.pnl["functions2"].render();
-		assert(out_tmp[0 .. out_ptr] == `before hello hello hello hello hello hello hello hello after`);
+		assertEq(out_tmp[0 .. out_ptr], `before hello hello hello hello hello hello hello hello after`);
 	});
 	
 	UNIT("functions #3", () {
@@ -3988,7 +3989,7 @@ unittest {
 		assert("functions3" in PNL.pnl);
 		version(testbytecode) PNL.pnl["functions3"].print_bytecode;
 		PNL.pnl["functions3"].render();
-		assert(out_tmp[0 .. out_ptr] == `0:zero 1:one 2:two 3:three 4:four 5:five 6:six 7:seven `);
+		assertEq(out_tmp[0 .. out_ptr], `0:zero 1:one 2:two 3:three 4:four 5:five 6:six 7:seven `);
 	});
 	
 	UNIT("link functions #1", () {
@@ -4004,8 +4005,8 @@ unittest {
 		version(testbytecode) PNL.pnl["functions1"].print_bytecode;
 		PNL.pnl["functions1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','','test_function')" href="?z=k:invite,j:profile&f=test_function" class="custom">` ||
-			out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','','test_function')" href="?z=j:profile,k:invite&f=test_function" class="custom">`);
+		assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','','test_function')" href="?z=k:invite,j:profile&f=test_function" class="custom">`,
+			`<a onclick="return z('j:profile,k:invite','','test_function')" href="?z=j:profile,k:invite&f=test_function" class="custom">`);
 		
 		PNL.funcs.remove("test_function");
 	});
@@ -4023,8 +4024,8 @@ unittest {
 		version(testbytecode) PNL.pnl["functions2"].print_bytecode;
 		PNL.pnl["functions2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','','test_function','f_uid=11')" href="?z=k:invite,j:profile&f_uid=11&f=test_function" class="custom">` ||
-			out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','','test_function','f_uid=11')" href="?z=j:profile,k:invite&f_uid=11&f=test_function" class="custom">`);
+		assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','','test_function','f_uid=11')" href="?z=k:invite,j:profile&f_uid=11&f=test_function" class="custom">`,
+			`<a onclick="return z('j:profile,k:invite','','test_function','f_uid=11')" href="?z=j:profile,k:invite&f_uid=11&f=test_function" class="custom">`);
 		
 		PNL.funcs.remove("test_function");
 	});
@@ -4042,8 +4043,8 @@ unittest {
 		version(testbytecode) PNL.pnl["functions3"].print_bytecode;
 		PNL.pnl["functions3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','','test_function','f_uid=7')" href="?z=k:invite,j:profile&f_uid=7&f=test_function" class="custom">` ||
-			out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','','test_function','f_uid=7')" href="?z=j:profile,k:invite&f_uid=7&f=test_function" class="custom">`);
+		assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','','test_function','f_uid=7')" href="?z=k:invite,j:profile&f_uid=7&f=test_function" class="custom">`,
+			`<a onclick="return z('j:profile,k:invite','','test_function','f_uid=7')" href="?z=j:profile,k:invite&f_uid=7&f=test_function" class="custom">`);
 		
 		PNL.funcs.remove("test_function");
 	});
@@ -4061,8 +4062,8 @@ unittest {
 		version(testbytecode) PNL.pnl["functions4"].print_bytecode;
 		PNL.pnl["functions4"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<a onclick="return z('k:invite,j:profile','uid=7','test_function','f_uid=7')" href="?z=k:invite,j:profile&uid=7&f_uid=7&f=test_function" class="custom">` ||
-			out_tmp[0 .. out_ptr] == `<a onclick="return z('j:profile,k:invite','uid=7','test_function','f_uid=7')" href="?z=j:profile,k:invite&uid=7&f_uid=7&f=test_function" class="custom">`);
+		assertEq(out_tmp[0 .. out_ptr], `<a onclick="return z('k:invite,j:profile','uid=7','test_function','f_uid=7')" href="?z=k:invite,j:profile&uid=7&f_uid=7&f=test_function" class="custom">`,
+			`<a onclick="return z('j:profile,k:invite','uid=7','test_function','f_uid=7')" href="?z=j:profile,k:invite&uid=7&f_uid=7&f=test_function" class="custom">`);
 		
 		PNL.funcs.remove("test_function");
 	});
@@ -4078,7 +4079,7 @@ unittest {
 		assert("test2" in PNL.pnl);
 		version(testbytecode) PNL.pnl["test2"].print_bytecode;
 		PNL.pnl["test2"].render();
-		assert(out_tmp[0 .. out_ptr] == "number is 7");
+		assertEq(out_tmp[0 .. out_ptr], "number is 7");
 		
 		out_ptr = 0;
 		string t = `
@@ -4093,7 +4094,7 @@ unittest {
 		version(testbytecode) PNL.pnl["panel1"].print_bytecode;
 		PNL.pnl["panel1"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<div> some text</div><div id="lala">number is 7</div>`);
+		assertEq(out_tmp[0 .. out_ptr], `<div> some text</div><div id="lala">number is 7</div>`);
 	});
 	
 	UNIT("panel #2", () {
@@ -4107,7 +4108,7 @@ unittest {
 		assert("test2" in PNL.pnl);
 		version(testbytecode) PNL.pnl["test2"].print_bytecode;
 		PNL.pnl["test2"].render();
-		assert(out_tmp[0 .. out_ptr] == "number is 7");
+		assertEq(out_tmp[0 .. out_ptr], "number is 7");
 		
 		out_ptr = 0;
 		string t = `
@@ -4122,7 +4123,7 @@ unittest {
 		version(testbytecode) PNL.pnl["panel2"].print_bytecode;
 		PNL.pnl["panel2"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<div> some text</div><div id="lala">number is 7</div>`);
+		assertEq(out_tmp[0 .. out_ptr], `<div> some text</div><div id="lala">number is 7</div>`);
 	});
 	
 	UNIT("panel #3", () {
@@ -4136,7 +4137,7 @@ unittest {
 		assert("panel3" in PNL.pnl);
 		version(testbytecode) PNL.pnl["panel3"].print_bytecode;
 		PNL.pnl["panel3"].render();
-		assert(out_tmp[0 .. out_ptr] == "your mom is awesome!");
+		assertEq(out_tmp[0 .. out_ptr], "your mom is awesome!");
 		
 		out_ptr = 0;
 		string t2 = `
@@ -4148,7 +4149,7 @@ unittest {
 		PNL.parse_text(t2);
 		version(testbytecode) PNL.pnl["test2"].print_bytecode;
 		PNL.pnl["test2"].render();
-		assert(out_tmp[0 .. out_ptr] == "number is 7");
+		assertEq(out_tmp[0 .. out_ptr], "number is 7");
 		
 		out_ptr = 0;
 		string t = `
@@ -4163,7 +4164,7 @@ unittest {
 		version(testbytecode) PNL.pnl["test3"].print_bytecode;
 		PNL.pnl["test3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<div> some text</div><div id="lala">number is 7</div>`);
+		assertEq(out_tmp[0 .. out_ptr], `<div> some text</div><div id="lala">number is 7</div>`);
 	});
 	
 	UNIT("panel #4", () {
@@ -4177,7 +4178,7 @@ unittest {
 		assert("panel4" in PNL.pnl);
 		version(testbytecode) PNL.pnl["panel4"].print_bytecode;
 		PNL.pnl["panel4"].render();
-		assert(out_tmp[0 .. out_ptr] == "your mom is awesome!");
+		assertEq(out_tmp[0 .. out_ptr], "your mom is awesome!");
 		out_ptr = 0;
 		
 		string t2 = `
@@ -4190,7 +4191,7 @@ unittest {
 		assert("test2" in PNL.pnl);
 		version(testbytecode) PNL.pnl["test2"].print_bytecode;
 		PNL.pnl["test2"].render();
-		assert(out_tmp[0 .. out_ptr] == "number is 7");
+		assertEq(out_tmp[0 .. out_ptr], "number is 7");
 		out_ptr = 0;
 		
 		string t = `
@@ -4207,7 +4208,8 @@ unittest {
 		version(testbytecode) PNL.pnl["test3"].print_bytecode;
 		PNL.pnl["test3"].render();
 		
-		assert(out_tmp[0 .. out_ptr] == `<div> some text</div><div id="lala">your mom is awesome!</div>`);
+		assertEq(out_tmp[0 .. out_ptr], `<div> some text</div><div id="lala">your mom is awesome!</div>`);
 	});
+	+/
 }
 

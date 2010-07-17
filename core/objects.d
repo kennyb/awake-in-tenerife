@@ -63,14 +63,12 @@ class Url : TemplateObject {
 	private string*[] strings;
 	
 	protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
-		noticeln("CREATE");
 		auto obj = new typeof(this)();
 		obj.register(pnl, params);
 		return obj;
 	}
 	
 	private void register(inout PNL pnl, inout string[string] params) {
-		noticeln("REGISTER");
 		string parent = "";
 		string* ptr_parent = "parent" in params;
 		if(ptr_parent) {
@@ -121,13 +119,10 @@ class Url : TemplateObject {
 	}
 	
 	protected void load() {
-		noticeln("LOAD ", strings.length, " ", ints.length, " ", uints.length);
-		
 		foreach(i, key; keys) {
 			auto ptr_val = key in POST;
 			auto type = types[i];
 			auto offset = offsets[i];
-			noticeln("******* string ", key, " = ", ptr_val ? *ptr_val : "unset");
 			
 			isset[i] = ptr_val ? 1 : 0;
 			
@@ -182,7 +177,7 @@ version(unittests) {
 			POST["h"] = "lalalalala";
 			assert("url1" in PNL.pnl);
 			PNL.pnl["url1"].render();
-			assert(out_tmp[0 .. out_ptr] == `lalalalalatrue`);
+			assertEq(out_tmp[0 .. out_ptr], `lalalalalatrue`);
 		}
 		
 		void url2() {
@@ -201,7 +196,7 @@ version(unittests) {
 			POST["h"] = "1234";
 			assert("url2" in PNL.pnl);
 			PNL.pnl["url2"].render();
-			assert(out_tmp[0 .. out_ptr] == `1234true`);
+			assertEq(out_tmp[0 .. out_ptr], `1234true`);
 		}
 	}
 }
@@ -428,7 +423,7 @@ version(unittests) {
 			
 			assert("array1" in PNL.pnl);
 			PNL.pnl["array1"].render();
-			assert(out_tmp[0 .. out_ptr] == `0:1234 1:1111 2:0 3:1 4:2 5:3 `);
+			assertEq(out_tmp[0 .. out_ptr], `0:1234 1:1111 2:0 3:1 4:2 5:3 `);
 		}
 		
 		void array2() {
@@ -442,7 +437,7 @@ version(unittests) {
 			
 			assert("array2" in PNL.pnl);
 			PNL.pnl["array2"].render();
-			assert(out_tmp[0 .. out_ptr] == `0:1234 1:1111 2:0 3:1 4:lalala `);
+			assertEq(out_tmp[0 .. out_ptr], `0:1234 1:1111 2:0 3:1 4:lalala `);
 		}
 		
 		void array3() {
@@ -458,7 +453,7 @@ version(unittests) {
 			POST["h"] = "1234,1111,0,1,2,3";
 			assert("array3" in PNL.pnl);
 			PNL.pnl["array3"].render();
-			assert(out_tmp[0 .. out_ptr] == `0:1234 1:1111 2:0 3:1 4:2 5:3 `);
+			assertEq(out_tmp[0 .. out_ptr], `0:1234 1:1111 2:0 3:1 4:2 5:3 `);
 		}
 	}
 }
@@ -729,7 +724,7 @@ version(unittests) {
 			
 			assert("object1" in PNL.pnl);
 			PNL.pnl["object1"].render();
-			assert(out_tmp[0 .. out_ptr] == "number2 is 11");
+			assertEq(out_tmp[0 .. out_ptr], "number2 is 11");
 		}
 		
 		void obj2() {
@@ -743,7 +738,7 @@ version(unittests) {
 			
 			assert("object2" in PNL.pnl);
 			PNL.pnl["object2"].render();
-			assert(out_tmp[0 .. out_ptr] == "good");
+			assertEq(out_tmp[0 .. out_ptr], "good");
 		}
 		
 		void obj3() {
@@ -758,7 +753,7 @@ version(unittests) {
 			
 			assert("object3" in PNL.pnl);
 			PNL.pnl["object3"].render();
-			assert(out_tmp[0 .. out_ptr] == "number2 is 13");
+			assertEq(out_tmp[0 .. out_ptr], "number2 is 13");
 		}
 		
 		void obj4() {
@@ -774,7 +769,7 @@ version(unittests) {
 			
 			assert("object4" in PNL.pnl);
 			PNL.pnl["object4"].render();
-			assert(out_tmp[0 .. out_ptr] == "number2 is 13number2 is 13");
+			assertEq(out_tmp[0 .. out_ptr], "number2 is 13number2 is 13");
 		}
 		
 		void obj5() {
@@ -788,7 +783,7 @@ version(unittests) {
 			
 			assert("object5" in PNL.pnl);
 			PNL.pnl["object5"].render();
-			assert(out_tmp[0 .. out_ptr] == "number3 is 11");
+			assertEq(out_tmp[0 .. out_ptr], "number3 is 11");
 		}
 		
 		void obj6() {
@@ -804,7 +799,7 @@ version(unittests) {
 			
 			assert("object6" in PNL.pnl);
 			PNL.pnl["object6"].render();
-			assert(out_tmp[0 .. out_ptr] == "number3 is 13number3 is 13");
+			assertEq(out_tmp[0 .. out_ptr], "number3 is 13number3 is 13");
 		}
 		
 		void obj7() {
@@ -817,7 +812,7 @@ version(unittests) {
 			POST["uid"] = "22";
 			assert("object7" in PNL.pnl);
 			PNL.pnl["object7"].render();
-			assert(out_tmp[0 .. out_ptr] == "url_uid is 22");
+			assertEq(out_tmp[0 .. out_ptr], "url_uid is 22");
 		}
 		
 		void obj8() {
@@ -841,7 +836,7 @@ version(unittests) {
 			
 			assert("test2" in PNL.pnl);
 			PNL.pnl["test2"].render();
-			assert(out_tmp[0 .. out_ptr] == lala);
+			assertEq(out_tmp[0 .. out_ptr], lala);
 			out_ptr = 0;
 			
 			PNL.parse_text(`
@@ -856,7 +851,7 @@ version(unittests) {
 			
 			assert("test3" in PNL.pnl);
 			PNL.pnl["test3"].render();
-			assert(out_tmp[0 .. out_ptr] == lala ~ lala);
+			assertEq(out_tmp[0 .. out_ptr], lala ~ lala);
 		}
 		
 		void obj9() {
@@ -876,7 +871,7 @@ version(unittests) {
 			
 			assert("object9" in PNL.pnl);
 			PNL.pnl["object9"].render();
-			assert(out_tmp[0 .. out_ptr] == "11good13good");
+			assertEq(out_tmp[0 .. out_ptr], "11good13good");
 		}
 		
 		void obj10() {
@@ -896,7 +891,7 @@ version(unittests) {
 			
 			assert("object10" in PNL.pnl);
 			PNL.pnl["object10"].render();
-			assert(out_tmp[0 .. out_ptr] == "1-good0");
+			assertEq(out_tmp[0 .. out_ptr], "1-good0");
 		}
 		
 		void obj11() {
@@ -912,7 +907,7 @@ version(unittests) {
 			
 			assert("object10" in PNL.pnl);
 			PNL.pnl["object10"].render();
-			assert(out_tmp[0 .. out_ptr] == "3-5");
+			assertEq(out_tmp[0 .. out_ptr], "3-5");
 		}
 	}
 }
