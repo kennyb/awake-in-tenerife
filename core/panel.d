@@ -1861,19 +1861,11 @@ final class PNL {
 						uint ii = 0;
 						auto itext_len = inside.length;
 						
-						uint is_params = true;
-						while(inside[ii] != '{') {
-							if(++ii >= itext_len) {
-								is_params = false;
-								break;
-							}
-						}
-						
-						string[string] options;
-						string[string] params;
-						if(is_params == true) {
-							params.parse_options(inside[ii .. $]);
-							inside = trim(inside[0 .. ii]);
+						string unparsed_params = inside.after(' ');
+						string[string] params = null;
+						if(unparsed_params.length) {
+							params.parse_options(unparsed_params);
+							inside = trim(inside.until(' '));
 						}
 						
 						void delegate() ee = new_object(this, cmd, inside, params);

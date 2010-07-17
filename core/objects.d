@@ -17,7 +17,7 @@ The static method of the object can add a reference to itself in the array, and 
 
 */
 
-extern void delegate() new_object(inout PNL pnl, string cmd, string name, inout string[string] params) {
+extern void delegate() new_object(inout PNL pnl, string cmd, string name, string[string] params) {
 	//errorln("*** Loading Object: ", pnl.name, " :: ", name);
 	int instance = ((pnl.name in instance_count) && (name in instance_count[pnl.name])) ? ++instance_count[pnl.name][name] : 0;
 	
@@ -70,10 +70,10 @@ class Url : TemplateObject {
 	
 	private void register(inout PNL pnl, inout string[string] params) {
 		string parent = "";
-		string* ptr_parent = "parent" in params;
+		string* ptr_parent = "$parent" in params;
 		if(ptr_parent) {
 			parent = *ptr_parent ~ '.';
-			params.remove("parent");
+			//params.remove("$parent");
 		}
 		
 		foreach(string key, string value; params) {

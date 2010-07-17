@@ -644,7 +644,7 @@ string clearBr(string str) {
 		
 		len -= 4; // this is to prevent buffer overruns
 		
-		ptrdiff_t i = 0;
+		size_t i = 0;
 		while(i < len) {
 			char c = str[i];
 			if(c == '<') {
