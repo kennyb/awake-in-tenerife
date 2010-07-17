@@ -62,7 +62,7 @@ class Url : TemplateObject {
 	private ulong[] uints;
 	private string*[] strings;
 	
-	protected TemplateObject create(PNL pnl, string cmd, string[string] params) {
+	static TemplateObject create(PNL pnl, string cmd, string[string] params) {
 		auto obj = new typeof(this)();
 		obj.register(pnl, params);
 		return obj;
@@ -467,7 +467,7 @@ class R_Stats : TemplateObject {
 		stats = new typeof(this);
 	}
 	
-	protected TemplateObject create(PNL pnl, string cmd, string[string] params) {
+	static TemplateObject create(PNL pnl, string cmd, string[string] params) {
 		//pnl.registerInt(name ~ ".request_queries", &request_queries);
 		/*
 		pnl.registerString(name ~ ".firstname", &firstname);
@@ -562,7 +562,7 @@ version(unittests) {
 		string text, text_utf8, empty_text;
 		string[] numbers;
 		
-		protected TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+		static TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
 			auto obj = new typeof(this);
 			obj.register(pnl, params);
 			return obj;

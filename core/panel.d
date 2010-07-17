@@ -27,11 +27,11 @@ struct Interface {
 }
 
 interface TemplateInterface {
-	static void create(inout PNL pnl, string cmd, string inside);
+	static void create(PNL pnl, string cmd, string inside);
 }
 
 interface TemplateObject {
-	protected TemplateObject create(PNL pnl, string cmd, string[string] params);
+	static TemplateObject create(PNL pnl, string cmd, string[string] params);
 	protected void load();
 	protected void unload();
 }

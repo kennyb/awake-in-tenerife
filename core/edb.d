@@ -141,7 +141,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		private long* ptr_id;
 		private char*[] dyn_vars;
 		
-		protected TemplateObject create(PNL pnl, string cmd, string[string] params) {
+		static TemplateObject create(PNL pnl, string cmd, string[string] params) {
 			// factory method to produce these objects :)
 			typeof(this) obj = new typeof(this)(pnl, cmd, params);
 			//static assert(obj.register, "you must add the method to class `~ name ~ ` :: void register(inout PNL pnl, string[string] params)");
