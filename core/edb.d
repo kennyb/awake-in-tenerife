@@ -266,7 +266,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 					id = *ptr_id;
 				}
 				
-				if(id) {
+				if(id && !saved_query.length) {
 					load_id(id);
 				} else {
 					load(saved_query, page_offset, page_size);
@@ -637,11 +637,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	}
 	*/
 	
-	this(bson* bson_query, int page_offset = 0, int page_size = 1) {
-		_query(bson_query, page_offset, page_size);
-		this();
-	}
-	
 	this(long id) {
 		this();
 		page_size = 1;
@@ -685,7 +680,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	protected int loop() {
 		if(skip_loop == true) {
-			noticeln("L: skip_loop = false");
+			noticeln("L: skip_loop");
 			skip_loop = false;
 			// do nothing!
 		} else if(++current != page_size && cursor && mongo_cursor_next(cursor)) {
