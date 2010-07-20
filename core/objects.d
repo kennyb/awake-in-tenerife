@@ -512,10 +512,14 @@ version(unittests) {
 		 
 		const string name = "TestStaticObject";
 		static typeof(this) obj;
-		uint url_uid;
-		int random = 22;
+		static uint url_uid;
+		static int random = 22;
 		
-		TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+		static this() {
+			random = rand();
+		}
+		
+		static TemplateObject create(PNL pnl, string cmd, string[string] params) {
 			if(!obj) {
 				obj = new typeof(this);
 			}
@@ -526,7 +530,6 @@ version(unittests) {
 		}
 		
 		void load() {
-			random = rand();
 			string* p_uid = "uid" in POST;
 			if(p_uid) {
 				url_uid = toUint(*p_uid);
@@ -562,7 +565,7 @@ version(unittests) {
 		string text, text_utf8, empty_text;
 		string[] numbers;
 		
-		static TemplateObject create(inout PNL pnl, string cmd, inout string[string] params) {
+		static TemplateObject create(PNL pnl, string cmd, string[string] params) {
 			auto obj = new typeof(this);
 			obj.register(pnl, params);
 			return obj;

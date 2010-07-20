@@ -60,7 +60,8 @@ version(unittests) {
 				}
 				
 				checks_failed++;
-				assert(false);
+				//assert(false);
+				throw new Exception("failure");
 			}
 		}
 	}
