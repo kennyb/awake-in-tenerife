@@ -680,11 +680,11 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 	
 	protected int loop() {
 		if(skip_loop == true) {
-			noticeln("L: skip_loop");
+			//noticeln("L: skip_loop");
 			skip_loop = false;
 			// do nothing!
 		} else if(++current != page_size && cursor && mongo_cursor_next(cursor)) {
-			noticeln("L: next");
+			//noticeln("L: next");
 			if(current == 0) {
 				num_results = cursor.mm.reply_header.count;
 				result_offset = cursor.mm.reply_header.offset;
@@ -777,7 +777,7 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			*/
 			
 		} else {
-			noticeln("L: done (", current, " ", page_size, " ", cursor != null);
+			//noticeln("L: done (", current, " ", page_size, " ", cursor != null);
 			mongo_cursor_destroy(cursor);
 			cursor = null;
 			_id = 0;

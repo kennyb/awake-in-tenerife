@@ -1140,7 +1140,9 @@ class Core {
 						cur_conn.FUNC[key[2 .. $]] = value;
 					} else {
 						cur_conn.POST[key] = value;
-						if(key.length == 1 && key[0] == 'f' && cur_conn.content_len > 0) {
+						if(key.length == 1 && key[0] == 'f') {
+							//prt("<error>you can't call a function with a GET request</error>");
+							// this is temparary until I've worked on the js library a bit, getting it to interact with posts
 							cur_conn.func_name = value;
 						} else if(key == "L") {
 							cur_session.lang = value;
