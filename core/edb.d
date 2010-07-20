@@ -133,6 +133,8 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 		edb_inits["`~name~`"] = &edb_init;
 		` ~ (export_template ? `
 			PNL.registerObj(obj_name, &typeof(this).create);
+			PNL.registerFunction("` ~ name ~ `.count", &count);
+			PNL.registerFunction("` ~ name ~ `.total", &count);
 		` : ``) ~ `
 	}
 	
@@ -184,8 +186,6 @@ template GenDataModel(string name, string data_layout, bool export_template = fa
 			pnl.registerUint("` ~ name ~ `.column", &obj.column);
 			pnl.registerUint("` ~ name ~ `.num_results", &obj.num_results);
 			pnl.registerUint("` ~ name ~ `.offset", &obj.result_offset);
-			pnl.registerFunction("` ~ name ~ `.count", &count);
-			pnl.registerFunction("` ~ name ~ `.total", &count);
 			pnl.registerLoop("` ~ name ~ `", &obj.loop);
 			
 			return cast(TemplateObject)obj;

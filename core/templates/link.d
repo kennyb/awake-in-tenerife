@@ -194,7 +194,7 @@ class TemplateLink {
 			bool found_func = false;
 			string[] fargs;
 			if(ignore == false) {
-				if(func in PNL.funcs) {
+				if(func in PNL.funcs || func in PNL.public_funcs) {
 					found_func = true;
 					if(func in PNL.func_args) {
 						fargs = PNL.func_args[func];

@@ -922,6 +922,7 @@ final class PNL {
 		MODE_CUSTOM
 	}
 	
+	private uint scopee = 0;
 	public string name;
 	public int mode;
 	public bool is_public;
@@ -931,7 +932,7 @@ final class PNL {
 	private string text;
 	
 	private int delegate()[int][string] obj_loops;
-	private long function(string args)[int][string] obj_funcs;
+	private long delegate(string args)[string] obj_delegates;
 	
 	// this is embarrassing that they're public, lol... fix this shit
 	public uint[string][uint] var_type;
@@ -939,12 +940,12 @@ final class PNL {
 	public string*[string][uint] var_str;
 	
 	private int[string] obj_loop_inst;
-	private int[string] obj_func_inst;
+	//private int[string] obj_method_inst;
 	private int[string] var_inst;
 	
 	static private int[] lines;
+	static private long function(string args)[string] obj_funcs;
 	
-	private uint scopee = 0;
 	static private bool first_text;
 	
 	this(string text, string name) {
@@ -1070,7 +1071,7 @@ final class PNL {
 		}
 	}
 	
-	void registerString(string name, string* var, bool global = false) {
+	public void registerString(string name, string* var, bool global = false) {
 		if(global) {
 			if(name in global_var_type) {
 				// probably unnecesary. don't do this...
@@ -1097,23 +1098,15 @@ final class PNL {
 		}
 	}
 	
-	void registerFunction(string name, long function(string args) func, bool global = false) {
+	static public void registerFunction(string name, long function(string args) func, bool global = false) {
 		if(global) {
 			errorln("global functions not yet available");
 		} else {
-			int i = 0;
-			int* inst = name in obj_func_inst;
-			
-			if(inst) {
-				i = ++(*inst);
-			}
-			
-			obj_funcs[name][i] = func;
-			obj_func_inst[name] = i;
+			obj_funcs[name] = func;
 		}
 	}
 	
-	void registerLoop(string name, int delegate() incloop, bool global = false) {
+	public void registerLoop(string name, int delegate() incloop, bool global = false) {
 		if(global) {
 			errorln("global loops not yet available");
 		} else {
@@ -1325,12 +1318,12 @@ final class PNL {
 		}
 	}
 	
-	int find_func(string name) {
-		int* i = name in obj_func_inst;
+	long function(string)* find_func(string name) {
+		auto i = name in obj_funcs;
 		if(i) {
-			return *i;
+			return i;
 		} else {
-			return -1;
+			return null;
 		}
 	}
 	
@@ -1582,12 +1575,12 @@ final class PNL {
 							}
 						}
 					} else {
-						int v1_func_inst = find_func(var1);
-						if(v1_func_inst >= 0) {
+						auto v1_func_inst = find_func(var1);
+						if(v1_func_inst !is null) {
 							// not a variable... try a function
 							PNLByte* p = newByte();
 							p.action = action | pnl_action_func_mask;
-							p.ptr = cast(char*)&obj_funcs[var1][v1_func_inst];
+							p.ptr = cast(char*)v1_func_inst;
 							//TODO!!!! - set this to the internal values
 							p.str_value = null;
 							return pb_count-1;
@@ -2175,11 +2168,12 @@ final class PNL {
 					}
 					
 					int v_inst;
+					auto v_func = find_func(inside);
 					PNLByte* p = newByte();
-					if((v_inst = find_func(inside)) >= 0) {
+					if(v_func) {
 						p.action = pnl_action_func_mask;
 						p.str_value = params;
-						p.ptr = cast(char*)&obj_funcs[inside][v_inst];
+						p.ptr = cast(char*)v_func;
 					} else if((v_inst = find_var(inside)) >= 0) {
 						first_text = false;
 						
